@@ -1,23 +1,16 @@
 ################################################################################
-# CSE 253: Programming Assignment 3
-# Winter 2019
-# Code author: Jenny Hamer
+# ECE 285: Final Project - Multi-Object Detection
+# Spring 2019
+# 
 #
 #
 # Description: 
 # This code defines a custom PyTorch Dataset object suited for the
-# NIH ChestX-ray14 dataset of 14 common thorax diseases. This dataset contains
-# 112,120 images (frontal-view X-rays) from 30,805 unique patients. Each image
-# may be labeled with a single disease or multiple (multi-label). The nominative
-# labels are mapped to an integer between 0-13, which is later converted into 
+# 2012 PASCAL VOC dataset with 20 unique categories. This dataset contains
+# approximately 100,000 images. This is a well-known dataset for object detection, 
+# classification, segmentation of objects and so on. The nominative
+# labels are mapped to an integer between 0-19, which is later converted into 
 # an n-hot binary encoded label.
-# 
-#
-# Dataset citation: 
-# X. Wang, Y. Peng , L. Lu Hospital-scale Chest X-ray Database and Benchmarks on
-# Weakly-Supervised Classification and Localization of Common Thorax Diseases. 
-# Department of Radiology and Imaging Sciences, September 2017. 
-# https://arxiv.org/pdf/1705.02315.pdf
 ################################################################################
 
 # PyTorch imports
@@ -31,6 +24,7 @@ import os
 from PIL import Image
 import numpy as np 
 import pandas as pd
+import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
 
 # Uncomment for Python2
@@ -38,21 +32,20 @@ import matplotlib.pyplot as plt
 
 
 
-class ChestXrayDataset(Dataset):
-    """Custom Dataset class for the Chest X-Ray Dataset.
+class PascalVOC2012Dataset(Dataset):
+    """Custom Dataset class for the 2012 PASCAL VOC Dataset.
 
-    The expected dataset is stored in the "/datasets/ChestXray-NIHCC/" on ieng6
+    The expected dataset is stored in the "/datasets/PascalVOC2012/" on ieng6
     """
     
-    def __init__(self, transform=transforms.ToTensor(), color='L'):
+    def __init__(self, transform=transforms.ToTensor(), color='RGB'):
         """
         Args:
         -----
         - transform: A torchvision.transforms object - 
                      transformations to apply to each image
                      (Can be "transforms.Compose([transforms])")
-        - color: Specifies image-color format to convert to 
-                 (default is L: 8-bit pixels, black and white)
+        - color: Specifies image-color format to convert to (default is RGB)
 
         Attributes:
         -----------
@@ -60,21 +53,43 @@ class ChestXrayDataset(Dataset):
         - image_info: A Pandas DataFrame of the dataset metadata
         - image_filenames: An array of indices corresponding to the images
         - labels: An array of labels corresponding to the each sample
-        - classes: A dictionary mapping each disease name to an int between [0, 13]
+        - classes: A dictionary mapping each object name to an int between [0, 19]
         """
         
         self.transform = transform
         self.color = color
-        self.image_dir = "/datasets/ChestXray-NIHCC/images/"
-        self.image_info = pd.read_csv("/datasets/ChestXray-NIHCC/Data_Entry_2017.csv")
-        self.image_filenames = self.image_info["Image Index"]
-        self.labels = self.image_info["Finding Labels"]
-        self.classes = {0: "Atelectasis", 1: "Cardiomegaly", 2: "Effusion", 
-                3: "Infiltration", 4: "Mass", 5: "Nodule", 6: "Pneumonia", 
-                7: "Pneumothorax", 8: "Consolidation", 9: "Edema", 
-                10: "Emphysema", 11: "Fibrosis", 
-                12: "Pleural_Thickening", 13: "Hernia"}
+        self.image_dir = "/datasets/ee285f-public/PascalVOC2012/JPEGImages/"
+        self.image_info_dir = "/datasets/ee285f-public/PascalVOC2012/Annotations/"
+        
+        def load_xml_from_folder:
+            xmlfile = []
+            for filename in os.listdir(folder):
+                if "2012" not in filename: 
+                    continue
+                else:
+                    xmlfile.append(filename)
+            return xmlfile
+        
+        filelist = load_xml_from_folder(self.image_info_dir)
+        for file in filelist:
+            xml = file
+            tree = ET.parse(xml)
+            root = tree.getroot()
+            
+            name[file] = root[0][0].txt
+            xmin[file] = root[0][3][0].txt
+            xmax[file] = root[0][3][1].txt
+            ymin[file] = root[0][3][2].txt
+            ymax[file] = root[0][3][3].txt           
 
+        #self.image_filenames = self.image_info["Image Index"]
+        #self.labels = self.image_info["Finding Labels"]
+        self.classes = {0: "Person", 1: "Bird", 2: "Cat", 3: "Cow", 
+                4: "Dog", 5: "Horse", 6: "Sheep", 7: "Aeroplane", 
+                8: "Bicycle", 9: "Boat", 10: "Bus", 11: "Car", 12: "Motorbike", 
+                13: "Train", 14: "Bottle", 15: "Chair", 16: "Dining Table", 
+                17: "Potted Plant", 18: "Sofa", 19: "TV/Monitor"}
+        
         
     def __len__(self):
         
@@ -113,8 +128,8 @@ class ChestXrayDataset(Dataset):
         # TODO comment if Basic
         image = ( image - image.mean() ) / image.std()
 
-        # Convert multi-class label into binary encoding 
-        label = self.convert_label(self.labels[ind], self.classes)
+        # Convert el into binary encoding 
+        #label = self.convert_label(self.labels[ind], self.classes)
         
         # Return the image and its label
         return (image, label)
