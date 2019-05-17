@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(MY_DIRNAME, '..'))
 
 # TODO: import net 
 from PASCAL_Dataset import create_split_loaders
-from YoloLoss import YOLOLoss
+from YOLOLoss import YoloLoss
 
 def train(config):
     config['global_step'] = config.get('start_step', 0)
@@ -43,10 +43,10 @@ def train(config):
     # Use all 3 scales for computing YOLO loss
     YOLO_losses = []
     for i in range(3):
-        YOLO_losses.append(YOLOLoss(config['yolo']['anchors'][i],
+        YOLO_losses.append(YoloLoss(config['yolo']['anchors'][i],
                                     config['yolo']['classes'], (config['img_w'], config['img_h'])))
 
-    # TODO: Define transforms
+    # TODO: Maybe in dataloader? Define transforms
     transform = transforms.Compose(
         [
             transforms.Resize(416),
@@ -175,7 +175,7 @@ def main():
     config['yolo']['anchors'] = [[[116, 90], [156, 198], [373, 326]],
                                 [[30, 61], [62, 45], [59, 119]],
                                 [[10, 13], [16, 30], [33, 23]]]
-    config['yolo']['classes'] = 80
+    config['yolo']['classes'] = 20
     
     config['lr']['backbone_lr'] = 0.001
     config['lr']['other_lr'] = 0.01
@@ -190,13 +190,9 @@ def main():
     config['epochs'] = 50  # Number of epochs to train the model
     config['img_h'] = config['img_w'] = 416,
     config['seed'] = np.random.seed()
-    config['working_dir'] = "./states",     #  replace with your working dir
-    config['pretrain_snapshot'] = "",       #  load checkpoint
-    config['evaluate_type'] = "", 
+    config['working_dir'] = "./states"     #  replace with your working dir
+    config['pretrain_snapshot'] = ""       #  load checkpoint
     config['try'] = 0,
-    config['export_onnx'] = False,
-
-    #config = importlib.import_module(params.TRAINING_PARAMS) 
    
     
     # Create sub_working_dir
