@@ -15,7 +15,7 @@
 
 # PyTorch imports
 import torch
-import torchvision
+import torchvision as tv
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -190,3 +190,4 @@ def create_split_loaders(imgs_dir, labels_dir, batch_size, seed, transform=trans
 if __name__ == '__main__':
     imgs_dir = './VOC2012/JPEGImages/'
     labels_dir = './VOC2012/labels/'
+    dataset = PascalVOC2012Dataset(Dataset, imgs_dir, labels_dir)
