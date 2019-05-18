@@ -43,8 +43,8 @@ def train(config):
     # Use all 3 scales for computing YOLO loss
     YOLO_losses = []
     for i in range(3):
-        YOLO_losses.append(YoloLoss(config['yolo']['anchors'][i],
-                                    config['yolo']['classes'], (config['img_w'], config['img_h'])))
+        YOLO_losses.append(YoloLoss(config['yolo']['classes'], (config['img_w'], config['img_h']),
+                            config['yolo']['anchors'][i])
 
     # TODO: Maybe in dataloader? Define transforms
     transform = transforms.Compose(

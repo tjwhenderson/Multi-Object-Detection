@@ -32,14 +32,14 @@ class YoloLoss(nn.Module):
     def forward(self, inputs, targets):
         
         # Initialize input variables
-        box_size = np.size(inputs,0)
+        batch_size = np.size(inputs,0)
         in_img_w = np.size(inputs,2)
         in_img_h = np.size(inputs,3)
         str_w = self.img_size[0] / in_img_w
         str_h = self.img_size[1] / in_img_h
         anchors_scaled = [(anch_w / str_w, anch_h / str_h) for anch_w, anch_h in self.anchors]
 
-        pred = inputs.view(box_size, self.num_anchors,
+        pred = inputs.view(batch_size, self.num_anchors,
                                 self.bbox_attribs, in_img_h, in_img_w).permute(0, 1, 3, 4, 2).contiguous()
 
         # Get the outputs from the inputs
@@ -76,18 +76,18 @@ class YoloLoss(nn.Module):
     def parse_targets(self, targets, anchors, in_img_w, in_img_h, threshold):
         
         # Initalize variables
-        box_size = targets.size(0)
-        mask = torch.zeros(box_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        noobj_mask = torch.ones(box_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        t_x = torch.zeros(box_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        t_y = torch.zeros(box_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        t_w = torch.zeros(box_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        t_h = torch.zeros(box_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        t_conf = torch.zeros(box_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        t_class = torch.zeros(box_size, self.num_anchors, in_img_w, in_img_h, self.num_classes, requires_grad=False)
+        batch_size = targets.size(0)
+        mask = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
+        noobj_mask = torch.ones(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
+        t_x = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
+        t_y = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
+        t_w = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
+        t_h = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
+        t_conf = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
+        t_class = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, self.num_classes, requires_grad=False)
         
         # Calculate values
-        for b in range(box_size):
+        for b in range(batch_size):
             for t in range(targets.shape[1]):
                 if np.sum(targets[b,t]) == 0:
                     continue
@@ -98,7 +98,7 @@ class YoloLoss(nn.Module):
                 g_w = targets[b,t,3]*in_img_w
                 g_h = targets[b,t,4]*in_img_h
                 
-                # Get grid box indices
+                # Get the indices of the grid box
                 g_i = int(g_x)
                 g_j = int(g_y)
                 
