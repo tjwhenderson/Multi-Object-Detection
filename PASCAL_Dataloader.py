@@ -38,15 +38,21 @@ class PascalVOC2012Dataset(Dataset):
         self.img_data = []
         self.label_data = []
         self.img_size = img_size
-        self.mode = mode
+        self.mode = mode # this isn't used, but could be in the future
         self.imgs_dir = imgs_dir
         self.labels_dir = labels_dir
 
-        self.classes = {0: "Person", 1: "Bird", 2: "Cat", 3: "Cow",
-                        4: "Dog", 5: "Horse", 6: "Sheep", 7: "Aeroplane",
-                        8: "Bicycle", 9: "Boat", 10: "Bus", 11: "Car", 12: "Motorbike",
-                        13: "Train", 14: "Bottle", 15: "Chair", 16: "Dining Table",
-                        17: "Potted Plant", 18: "Sofa", 19: "TV/Monitor"}
+        # self.classes = {0: "Person", 1: "Bird", 2: "Cat", 3: "Cow",
+        #                 4: "Dog", 5: "Horse", 6: "Sheep", 7: "Aeroplane",
+        #                 8: "Bicycle", 9: "Boat", 10: "Bus", 11: "Car", 12: "Motorbike",
+        #                 13: "Train", 14: "Bottle", 15: "Chair", 16: "Dining Table",
+        #                 17: "Potted Plant", 18: "Sofa", 19: "TV/Monitor"}
+
+        self.classes = = {0: "aeroplace", 1: "bicycle", 2: "bird", 3: "boat",
+                        4: "bottle", 5: "bus", 6: "car", 7: "cat", 8: "chair",
+                        9: "cow", 10: "diningtable", 11: "dog", 12: "horse",
+                        13: "motorbike", 14: "person", 15: "pottedplant",
+                        16: "sheep", 17: "sofa", 18: "train", 19: "tvmonitor"}
 
         for filename in sorted(os.listdir(self.labels_dir)):
             self.img_data.append(filename.replace("txt", "jpg"))
@@ -137,8 +143,6 @@ def create_split_loaders(imgs_dir, labels_dir, batch_size, seed, transform=trans
     - val_loader: (DataLoader) The iterator for the validation set
     - test_loader: (DataLoader) The iterator for the test set
     """
-
-    # Get create a ChestXrayDataset object
     dataset = PascalVOC2012Dataset(Dataset, imgs_dir, labels_dir)
 
     # Dimensions and indices of training set
@@ -181,7 +185,7 @@ def create_split_loaders(imgs_dir, labels_dir, batch_size, seed, transform=trans
 
     val_loader = DataLoader(dataset, batch_size=batch_size,
                             sampler=sample_val, num_workers=num_workers,
-                              pin_memory=pin_memory)
+                            pin_memory=pin_memory)
 
 
     # Return the training, validation, test DataLoader objects
