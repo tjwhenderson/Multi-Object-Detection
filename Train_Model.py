@@ -46,15 +46,6 @@ def train(config):
         YOLO_losses.append(YoloLoss(config['yolo']['classes'], (config['img_w'], config['img_h']),
                             config['yolo']['anchors'][i])
 
-    # TODO: Maybe in dataloader? Define transforms
-    transform = transforms.Compose(
-        [
-            transforms.Resize(416),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
-            transforms.ToTensor()
-        ])
-    
     # Check if your system supports CUDA
     use_cuda = torch.cuda.is_available()
 
@@ -68,8 +59,11 @@ def train(config):
         extras = False
         print("CUDA NOT supported")
     
-    # TODO: Load in data
-    train_dataloader, val_loader, test_loader = create_split_loaders(
+    # Load in data
+    root_dir = os.getcwd()
+    imgs_dir = './VOC2012/JPEGImages/'
+    labels_dir = './VOC2012/Labels/'
+    train_dataloader, val_loader, test_loader = create_split_loaders(imgs_dir, labels_dir, config['batch_size'])
     
     # Instantiate model to run on the GPU or CPU based on CUDA support
     model = model.to(computing_device)

@@ -5,7 +5,7 @@ import torch.nn as nn
 
 
 # TODO: Import bbox script
-#from common.utils import bbox_iou
+import bbox_iou
 
 
 class YoloLoss(nn.Module):
