@@ -39,6 +39,10 @@ class PascalVOC2012Dataset(Dataset):
         self.label_data = []
         self.img_size = img_size
         self.mode = mode # this isn't used, but could be in the future
+
+
+        # self.imgs_dir = os.path.join(root_dir, "/VOC2012/JPEGImages/")
+        # self.labels_dir = os.path.join(root_dir, "/VOC2012/Labels/")
         self.imgs_dir = imgs_dir
         self.labels_dir = labels_dir
 
@@ -48,7 +52,7 @@ class PascalVOC2012Dataset(Dataset):
         #                 13: "Train", 14: "Bottle", 15: "Chair", 16: "Dining Table",
         #                 17: "Potted Plant", 18: "Sofa", 19: "TV/Monitor"}
 
-        self.classes = = {0: "aeroplace", 1: "bicycle", 2: "bird", 3: "boat",
+        self.classes = {0: "aeroplace", 1: "bicycle", 2: "bird", 3: "boat",
                         4: "bottle", 5: "bus", 6: "car", 7: "cat", 8: "chair",
                         9: "cow", 10: "diningtable", 11: "dog", 12: "horse",
                         13: "motorbike", 14: "person", 15: "pottedplant",
@@ -74,23 +78,33 @@ class PascalVOC2012Dataset(Dataset):
 
         Returns:
         --------
-        - A tuple (img, label)
+        - img: transformed tensor image at the specified index
+        - label: corresponding label of the image as an array 
+                 with the values : [class, x, y, w, h]
+        - sample: dictionary containing the 'img', 'label', 'orig_img' (original
+                  PASCAL image), and 'orig_dim' (original image dimensions).
         """
 
         img_path = os.path.join(self.imgs_dir,self.img_data[idx])
         img = Image.open(img_path).convert('RGB')
+        w, h = img.size
+        sample = {'orig_img' : img, 'orig_dim' : np.array([h,w])}
+        
         transform = tv.transforms.Compose([
             tv.transforms.Resize(self.img_size),
             tv.transforms.RandomHorizontalFlip(),
             tv.transforms.RandomVerticalFlip(),
             tv.transforms.ToTensor()])
-
             # Do we need to normalize the tensor??
-            # tv.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
+            # tv.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])     
+        img = transform(img)
+        
         label_path = os.path.join(self.labels_dir,self.label_data[idx])
         label = np.loadtxt(label_path).reshape(-1,5)
-        return img, label
+        
+        sample['img'] = img
+        sample['label'] = label
+        return img, label, sample
 
     # not sure if this is needed, so I left it
     def convert_label(self, label, classes):
@@ -112,8 +126,7 @@ class PascalVOC2012Dataset(Dataset):
         return binary_label
 
 
-
-def create_split_loaders(imgs_dir, labels_dir, batch_size, seed, transform=transforms.ToTensor(),
+def create_split_loaders(imgs_dir, labels_dir, batch_size, seed=15,
                          p_val=0.1, p_test=0.2, shuffle=True,
                          show_sample=False, extras={}):
     """ Creates the DataLoader objects for the training, validation, and test sets.
@@ -143,7 +156,7 @@ def create_split_loaders(imgs_dir, labels_dir, batch_size, seed, transform=trans
     - val_loader: (DataLoader) The iterator for the validation set
     - test_loader: (DataLoader) The iterator for the test set
     """
-    dataset = PascalVOC2012Dataset(Dataset, imgs_dir, labels_dir)
+    dataset = PascalVOC2012Dataset(imgs_dir, labels_dir)
 
     # Dimensions and indices of training set
     dataset_size = dataset.__len__()
@@ -169,6 +182,7 @@ def create_split_loaders(imgs_dir, labels_dir, batch_size, seed, transform=trans
 
     num_workers = 0
     pin_memory = False
+    
     # If CUDA is available
     if extras:
         num_workers = extras["num_workers"]
@@ -192,6 +206,15 @@ def create_split_loaders(imgs_dir, labels_dir, batch_size, seed, transform=trans
     return (train_loader, val_loader, test_loader)
 
 if __name__ == '__main__':
+    root_dir = os.getcwd()
     imgs_dir = './VOC2012/JPEGImages/'
-    labels_dir = './VOC2012/labels/'
-    dataset = PascalVOC2012Dataset(Dataset, imgs_dir, labels_dir)
+    labels_dir = './VOC2012/Labels/'
+
+    dataset = PascalVOC2012Dataset(imgs_dir, labels_dir)
+    print(dataset.__len__())
+    img, label, sample = dataset.__getitem__(15)
+    plt.imshow(sample['orig_img'])
+    
+    dataloaders = create_split_loaders(imgs_dir, labels_dir, batch_size=64)
+    
+    
