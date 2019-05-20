@@ -1,25 +1,15 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[22]:
-
-
 import torch
 import torch.nn as nn
 import numpy as np
-
-
-# In[23]:
-
-
-__all__ = ['darknet53']
+from collections import OrderedDict
+import math
 
 class Darknet(nn.Module):
     ''' backbone architecture'''
-    def __init__(self, cfg_filename, height=None):
+    def __init__(self, layers):
         super(Darknet, self).__init__()
         self.inplanes = 32
-        elf.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(self.inplanes)
         self.relu1 = nn.LeakyReLU(0.1)
         
@@ -27,11 +17,12 @@ class Darknet(nn.Module):
         self.layer2 = self.make_layer([64, 128], layers[1])
         self.layer3 = self.make_layer([128, 256], layers[2])
         self.layer4 = self.make_layer([256, 512], layers[3])
+        self.layer5 = self.make_layer([512, 1024], layers[4])
         self.layers_out_filters = [64, 128, 256, 512, 1024]
         
         #do we need these?
-        self.seen = 0
-        self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
+        #self.seen = 0
+        #self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
         
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -67,18 +58,17 @@ class Darknet(nn.Module):
         out5 = self.layer5(out4)
 
         return out3, out4, out5
-    
-    def darknet53(pretrained, **kwargs):
-        model = DarkNet([1, 2, 8, 8, 4])
+
+
+
+def darknet53(pretrained, **kwargs):
+        model = Darknet([1, 2, 8, 8, 4])
         if pretrained:
             if isinstance(pretrained, str):
                 model.load_state_dict(torch.load(pretrained))
             else:
                 raise Exception("darknet request a pretrained path. got [{}]".format(pretrained))
         return model
-
-
-# In[24]:
 
 
 class BasicBlock(nn.Module):
@@ -108,27 +98,24 @@ class BasicBlock(nn.Module):
         return out
 
 
-# In[25]:
-
-
 class yoloModel(nn.Module):
     def __init__(self, config):
         super(yoloModel, self).__init__()
         self.config = config
-        self.model_params = self.config['model_params']
-        self.backbone = darknet53(self.model_params['backbone_pretrained'])
-        out_filters = self.backbone.layers_out_filters
+        #self.model_params = self.config["model_params"]
+        self.backbone = darknet53(self.config["backbone_pretrained"])
+        _out_filters = self.backbone.layers_out_filters
         #add yolo layers
          #  embedding0
-        final_out_filter0 = len(config["yolo"]["anchors"][0]) * (5 + config["yolo"]["classes"])
+        final_out_filter0 = len(config["anchors"][0]) * (5 + config["classes"])
         self.embedding0 = self._make_embedding([512, 1024], _out_filters[-1], final_out_filter0)
         #  embedding1
-        final_out_filter1 = len(config["yolo"]["anchors"][1]) * (5 + config["yolo"]["classes"])
+        final_out_filter1 = len(config["anchors"][1]) * (5 + config["classes"])
         self.embedding1_cbl = self._make_cbl(512, 256, 1)
         self.embedding1_upsample = nn.Upsample(scale_factor=2, mode='nearest')
         self.embedding1 = self._make_embedding([256, 512], _out_filters[-2] + 256, final_out_filter1)
         #  embedding2
-        final_out_filter2 = len(config["yolo"]["anchors"][2]) * (5 + config["yolo"]["classes"])
+        final_out_filter2 = len(config["anchors"][2]) * (5 + config["classes"])
         self.embedding2_cbl = self._make_cbl(256, 128, 1)
         self.embedding2_upsample = nn.Upsample(scale_factor=2, mode='nearest')
         self.embedding2 = self._make_embedding([128, 256], _out_filters[-3] + 128, final_out_filter2)
@@ -242,4 +229,5 @@ class yoloModel(nn.Module):
                     v.copy_(vv)
                     ptr += num_b
                     last_conv = None
+
 
