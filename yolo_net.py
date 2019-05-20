@@ -63,6 +63,7 @@ class Darknet(nn.Module):
                 x = self.module_list[i](x)
                 detections.append(x)
                 outputs[i] = outputs[i-1]
+        
         return torch.cat(detections, 1)
     
     def load_cfg(self, filename):

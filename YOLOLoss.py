@@ -33,14 +33,14 @@ class YoloLoss(nn.Module):
         
         # Initialize input variables
         batch_size = np.size(inputs,0)
-        in_img_w = np.size(inputs,2)
-        in_img_h = np.size(inputs,3)
-        str_w = self.img_size[0] / in_img_w
-        str_h = self.img_size[1] / in_img_h
+        grid_w = np.size(inputs,2)
+        grid_h = np.size(inputs,3)
+        str_w = self.img_size[0] / grid_w
+        str_h = self.img_size[1] / grid_h
         anchors_scaled = [(anch_w / str_w, anch_h / str_h) for anch_w, anch_h in self.anchors]
 
         pred = inputs.view(batch_size, self.num_anchors,
-                                self.bbox_attribs, in_img_h, in_img_w).permute(0, 1, 3, 4, 2).contiguous()
+                                self.bbox_attribs, grid_w, grid_h).permute(0, 1, 3, 4, 2).contiguous()
 
         # Get the outputs from the inputs
         x = torch.sigmoid(pred[...,0])          
@@ -53,7 +53,7 @@ class YoloLoss(nn.Module):
         
         # Parse variables from targets
         mask, noobj_mask, t_x, t_y, t_w, t_h, t_conf, t_class = self.parse_targets(targets, anchors_scaled,
-                                                                           in_img_w, in_img_h,
+                                                                           grid_w, grid_h,
                                                                            self.threshold)
         # Move variables to CUDA device
         mask, noobj_mask, t_x, t_y, t_w, t_h, t_conf, t_class = mask.cuda(), noobj_mask.cuda(), \
@@ -73,18 +73,18 @@ class YoloLoss(nn.Module):
         return loss, loss_x.item(), loss_y.item(), loss_w.item(),\
             loss_h.item(), loss_conf.item(), loss_class.item()
         
-    def parse_targets(self, targets, anchors, in_img_w, in_img_h, threshold):
+    def parse_targets(self, targets, anchors, grid_w, grid_h, threshold):
         
         # Initalize variables
         batch_size = targets.size(0)
-        mask = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        noobj_mask = torch.ones(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        t_x = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        t_y = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        t_w = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        t_h = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        t_conf = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, requires_grad=False)
-        t_class = torch.zeros(batch_size, self.num_anchors, in_img_w, in_img_h, self.num_classes, requires_grad=False)
+        mask = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        noobj_mask = torch.ones(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        t_x = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        t_y = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        t_w = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        t_h = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        t_conf = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        t_class = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, self.num_classes, requires_grad=False)
         
         # Calculate values
         for b in range(batch_size):
@@ -93,10 +93,10 @@ class YoloLoss(nn.Module):
                     continue
                     
                 # Convert positions to make them relative to box
-                g_x = targets[b,t,1]*in_img_w
-                g_y = targets[b,t,2]*in_img_h
-                g_w = targets[b,t,3]*in_img_w
-                g_h = targets[b,t,4]*in_img_h
+                g_x = targets[b,t,1]*grid_w
+                g_y = targets[b,t,2]*grid_h
+                g_w = targets[b,t,3]*grid_w
+                g_h = targets[b,t,4]*grid_h
                 
                 # Get the indices of the grid box
                 g_i = int(g_x)

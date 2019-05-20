@@ -29,7 +29,7 @@ def train(config):
     #net = ModelMain(config, is_training=is_training)
 
     # Define the optimizer and learning rate
-    optimizer = _get_optimizer(config, net)
+    optimizer = obtain_optimizer(config, net)
     lr_scheduler = optim.lr_scheduler.StepLR(optimizer,
         step_size=config['lr']['decay_step'],
         gamma=config['lr']['decay_gamma'])
