@@ -99,6 +99,9 @@ class PascalVOC2012Dataset(Dataset):
             # tv.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])     
         img = transform(img)
         
+        # Z-score
+        img = ( img - img.mean() ) / img.std()
+        
         label_path = os.path.join(self.labels_dir,self.label_data[idx])
         label = np.loadtxt(label_path).reshape(-1,5)
         
