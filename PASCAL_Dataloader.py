@@ -15,10 +15,12 @@
 
 # PyTorch imports
 import torch
-import torchvision as tv
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 from torch.utils.data.sampler import SubsetRandomSampler
+from torchvision.datasets import VOCDetection
+from torchvision.transforms import Compose, Resize, RandomHorizontalFlip, RandomVerticalFlip, ToTensor, Normalize
+
 
 # Other libraries for data manipulation and visualization
 import os
@@ -26,47 +28,33 @@ from PIL import Image
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import pickle
+import xml.etree.ElementTree as ET
 
 class PascalVOC2012Dataset(Dataset):
     """Custom Dataset class for the 2012 PASCAL VOC Dataset.
 
     The expected dataset is stored in the "/datasets/PascalVOC2012/" on ieng6
     """
+    def __init__(self, transform, root_dir, mode='trainval', download=False):
+        super(PascalVOC2012Dataset, self).__init__()
+        self.data = VOCDetection(root=root_dir, year='2012', \
+                    transform=transform, image_set=mode, download=download)
 
-    def __init__(self, imgs_dir, labels_dir, img_size=416, mode='train'):
-        self.img_data = []
-        self.label_data = []
-        self.img_size = img_size
-        self.mode = mode # this isn't used, but could be in the future
+        # self.classes = {0: "aeroplace", 1: "bicycle", 2: "bird", 3: "boat",
+        #                 4: "bottle", 5: "bus", 6: "car", 7: "cat", 8: "chair",
+        #                 9: "cow", 10: "diningtable", 11: "dog", 12: "horse",
+        #                 13: "motorbike", 14: "person", 15: "pottedplant",
+        #                 16: "sheep", 17: "sofa", 18: "train", 19: "tvmonitor"}
 
-
-        # self.imgs_dir = os.path.join(root_dir, "/VOC2012/JPEGImages/")
-        # self.labels_dir = os.path.join(root_dir, "/VOC2012/Labels/")
-        self.imgs_dir = imgs_dir
-        self.labels_dir = labels_dir
-
-        # self.classes = {0: "Person", 1: "Bird", 2: "Cat", 3: "Cow",
-        #                 4: "Dog", 5: "Horse", 6: "Sheep", 7: "Aeroplane",
-        #                 8: "Bicycle", 9: "Boat", 10: "Bus", 11: "Car", 12: "Motorbike",
-        #                 13: "Train", 14: "Bottle", 15: "Chair", 16: "Dining Table",
-        #                 17: "Potted Plant", 18: "Sofa", 19: "TV/Monitor"}
-
-        self.classes = {0: "aeroplace", 1: "bicycle", 2: "bird", 3: "boat",
-                        4: "bottle", 5: "bus", 6: "car", 7: "cat", 8: "chair",
-                        9: "cow", 10: "diningtable", 11: "dog", 12: "horse",
-                        13: "motorbike", 14: "person", 15: "pottedplant",
-                        16: "sheep", 17: "sofa", 18: "train", 19: "tvmonitor"}
-
-        for filename in sorted(os.listdir(self.labels_dir)):
-            self.img_data.append(filename.replace("txt", "jpg"))
-
-        for filename in sorted(os.listdir(self.labels_dir)):
-            self.label_data.append(filename)
+        self.classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", \
+                        "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", \
+                        "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
     def __len__(self):
-        # Return the total number of data samples
-        return len(self.img_data)
+        """Returns the total number of samples in the dataset
+        """
+        return len(self.data)
 
     def __getitem__(self, idx):
         """Returns the image and its label at the index 'ind'
@@ -79,37 +67,51 @@ class PascalVOC2012Dataset(Dataset):
         Returns:
         --------
         - img: transformed tensor image at the specified index
-        - label: corresponding label of the image as an array 
+        - label: corresponding label of the image as an array
                  with the values : [class, x, y, w, h]
-        - sample: dictionary containing the 'img', 'label', 'orig_img' (original
-                  PASCAL image), and 'orig_dim' (original image dimensions).
         """
 
-        img_path = os.path.join(self.imgs_dir,self.img_data[idx])
-        img = Image.open(img_path).convert('RGB')
-        w, h = img.size
-        sample = {'orig_img' : img, 'orig_dim' : np.array([h,w])}
-        
-        transform = tv.transforms.Compose([
-            tv.transforms.Resize(self.img_size),
-            tv.transforms.RandomHorizontalFlip(),
-            tv.transforms.RandomVerticalFlip(),
-            tv.transforms.ToTensor()])
-            # Do we need to normalize the tensor??
-            # tv.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])     
-        img = transform(img)
-        
-        # Z-score
-        img = ( img - img.mean() ) / img.std()
-        
-        label_path = os.path.join(self.labels_dir,self.label_data[idx])
-        label = np.loadtxt(label_path).reshape(-1,5)
-        
-        sample['img'] = img
-        sample['label'] = label
-        return img, label, sample
+        img, label = self.data.__getitem__(idx)
 
-    # not sure if this is needed, so I left it
+        ## convert to compatible label for YOLO
+        yolo_label = self.get_yolo_label(label)
+        return img, yolo_label
+
+    def get_yolo_label(self, label):
+        w = int(label['annotation']['size']['width'])
+        h = int(label['annotation']['size']['height'])
+        obj = label['annotation']['object']
+        yolo_label = []
+
+        if isinstance(obj, list): # contains multiple objects
+            for obj_i in obj:
+                clsid_i = self.classes.index( obj_i['name'] )
+                b_i = (float(obj_i['bndbox']['xmin']), float(obj_i['bndbox']['xmax']), \
+                       float(obj_i['bndbox']['ymin']), float(obj_i['bndbox']['ymax']))
+                bbox_i = self.convert_bbox((w,h), b_i)
+                yolo_label.append([clsid_i, bbox_i])
+
+        else: # contains single object
+            clsid = self.classes.index( obj['name'] )
+            b = (float(obj['bndbox']['xmin']), float(obj['bndbox']['xmax']), \
+                 float(obj['bndbox']['ymin']), float(obj['bndbox']['ymax']))
+            bbox = self.convert_bbox((w,h), b)
+            yolo_label.append([clsid, bbox])
+        return yolo_label
+
+    def convert_bbox(self, size, box):
+        dw = 1./(size[0])
+        dh = 1./(size[1])
+        x = (box[0] + box[1])/2.0 - 1
+        y = (box[2] + box[3])/2.0 - 1
+        w = box[1] - box[0]
+        h = box[3] - box[2]
+        x = x*dw
+        w = w*dw
+        y = y*dh
+        h = h*dh
+        return (x,y,w,h)
+
     def convert_label(self, label, classes):
         """Convert the numerical label to n-hot encoding.
 
@@ -128,8 +130,9 @@ class PascalVOC2012Dataset(Dataset):
                 binary_label[key] = 1.0
         return binary_label
 
+#%%
 
-def create_split_loaders(imgs_dir, labels_dir, batch_size, seed=15,
+def create_split_loaders(root_dir, batch_size, seed=15,
                          p_val=0.1, p_test=0.2, shuffle=True,
                          show_sample=False, extras={}):
     """ Creates the DataLoader objects for the training, validation, and test sets.
@@ -159,7 +162,10 @@ def create_split_loaders(imgs_dir, labels_dir, batch_size, seed=15,
     - val_loader: (DataLoader) The iterator for the validation set
     - test_loader: (DataLoader) The iterator for the test set
     """
-    dataset = PascalVOC2012Dataset(imgs_dir, labels_dir)
+    transform = Compose([Resize(416), RandomHorizontalFlip(),RandomVerticalFlip(),
+                         ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+    dataset = PascalVOC2012Dataset(root_dir=root_dir, transform=transform)
 
     # Dimensions and indices of training set
     dataset_size = dataset.__len__()
@@ -185,7 +191,7 @@ def create_split_loaders(imgs_dir, labels_dir, batch_size, seed=15,
 
     num_workers = 0
     pin_memory = False
-    
+
     # If CUDA is available
     if extras:
         num_workers = extras["num_workers"]
@@ -208,16 +214,15 @@ def create_split_loaders(imgs_dir, labels_dir, batch_size, seed=15,
     # Return the training, validation, test DataLoader objects
     return (train_loader, val_loader, test_loader)
 
+#%%
 if __name__ == '__main__':
     root_dir = os.getcwd()
-    imgs_dir = './VOC2012/JPEGImages/'
-    labels_dir = './VOC2012/Labels/'
+    
+    transform = Compose([Resize(416), RandomHorizontalFlip(),RandomVerticalFlip(),
+                         ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-    dataset = PascalVOC2012Dataset(imgs_dir, labels_dir)
-    print(dataset.__len__())
-    img, label, sample = dataset.__getitem__(15)
-    plt.imshow(sample['orig_img'])
-    
-    dataloaders = create_split_loaders(imgs_dir, labels_dir, batch_size=64)
-    
-    
+    data = PascalVOC2012Dataset(root_dir=root_dir, transform=transform, download=False)
+    img, label = data.__getitem__(0)
+    print(label)
+
+    dataloaders = create_split_loaders(root_dir=root_dir, batch_size=64)
