@@ -18,6 +18,7 @@ MY_DIRNAME = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(MY_DIRNAME, '..'))
 
 # TODO: import net 
+from yolo_model import yoloModel
 from PASCAL_Dataset import create_split_loaders
 from YOLOLoss import YoloLoss
 
@@ -26,7 +27,7 @@ def train(config):
     is_training = False if config.get('export_onnx') else True
 
     # TODO: Load and initialize network
-    #net = ModelMain(config, is_training=is_training)
+    net = yoloModel(config)
 
     # Define the optimizer and learning rate
     optimizer = obtain_optimizer(config, net)
@@ -163,22 +164,22 @@ def main():
     
     # Initialize hyperparameters/variables
     config = {}
-    config['model_params']['backbone_name'] = "darknet_53"
-    config['model_params']['backbone_pretrained'] = "../weights/darknet53_weights_pytorch.pth" # set empty to disable
+    config['backbone_name'] = "darknet_53"
+    config['backbone_pretrained'] = "../weights/darknet53_weights_pytorch.pth" # set empty to disable
     
-    config['yolo']['anchors'] = [[[116, 90], [156, 198], [373, 326]],
+    config['anchors'] = [[[116, 90], [156, 198], [373, 326]],
                                 [[30, 61], [62, 45], [59, 119]],
                                 [[10, 13], [16, 30], [33, 23]]]
-    config['yolo']['classes'] = 20
+    config['classes'] = 20
     
-    config['lr']['backbone_lr'] = 0.001
-    config['lr']['other_lr'] = 0.01
-    config['lr']['freeze_backbone'] = False   #  freeze backbone wegiths to finetune
-    config['lr']['decay_gamma'] = 0.1
-    config['lr']['decay_step'] = 20          #  decay lr in every ? epochs
+    config['backbone_lr'] = 0.001
+    config['other_lr'] = 0.01
+    config['freeze_backbone'] = False   #  freeze backbone wegiths to finetune
+    config['decay_gamma'] = 0.1
+    config['decay_step'] = 20          #  decay lr in every ? epochs
     
-    config['optimizer']['type'] = "sgd"
-    config['optimizer']['weight_decay'] =  4e-05
+    config['optimizer_type'] = "sgd"
+    config['optimizer_weight_decay'] =  4e-05
     
     config['batch_size'] = 16  # Number of training samples per batch to be passed to network
     config['epochs'] = 50  # Number of epochs to train the model

@@ -36,7 +36,7 @@ class PascalVOC2012Dataset(Dataset):
 
     The expected dataset is stored in the "/datasets/PascalVOC2012/" on ieng6
     """
-    def __init__(self, transform, root_dir, mode='trainval', download=False):
+    def __init__(self, transform, root_dir, mode='trainval', download=True):
         super(PascalVOC2012Dataset, self).__init__()
         self.data = VOCDetection(root=root_dir, year='2012', \
                     transform=transform, image_set=mode, download=download)

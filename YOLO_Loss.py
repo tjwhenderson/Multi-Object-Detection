@@ -5,14 +5,14 @@ import torch.nn as nn
 
 
 # TODO: Import bbox script
-import bbox_iou
+from boundbox import IOU
 
 
 class YoloLoss(nn.Module):
     def __init__(self, num_classes, img_size, anchors):
         
         # Initalize input variables
-        super(YOLOLoss, self).__init__()
+        super(YoloLoss, self).__init__()
         self.num_classes = num_classes
         self.bbox_attribs = num_classes + 5
         self.img_size = img_size
@@ -102,15 +102,15 @@ class YoloLoss(nn.Module):
                 g_i = int(g_x)
                 g_j = int(g_y)
                 
-                # Get shape of gt box
-                gt_box = torch.FloatTensor(np.array([0, 0, g_w, g_h])).unsqueeze(0)
+                # Get shape of ground truth box
+                ground_truth_box = torch.FloatTensor(np.array([0, 0, g_w, g_h])).unsqueeze(0)
                 
                 # Get shape of anchor box
                 anchor_shapes = torch.FloatTensor(np.concatenate((np.zeros((self.num_anchors, 2)),
                                                                   np.array(anchors)), 1))
                 
                 # Calculate the IoU between gt and anchor shapes
-                anchor_ious = bbox_iou(gt_box,anchor_shapes)
+                anchor_ious = IOU(ground_truth_box,anchor_shapes)
                 
                 # Set mask to zero where the overlap is larger than the threshold
                 noobj_mask[b,anchor_ious > threshold,g_j,g_i] = 0
