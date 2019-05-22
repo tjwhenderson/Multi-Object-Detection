@@ -36,7 +36,7 @@ class PascalVOC2012Dataset(Dataset):
 
     The expected dataset is stored in the "/datasets/PascalVOC2012/" on ieng6
     """
-    def __init__(self, transform, root_dir, mode='trainval', download=True):
+    def __init__(self, transform, root_dir, mode='trainval', download=False):
         super(PascalVOC2012Dataset, self).__init__()
         self.data = VOCDetection(root=root_dir, year='2012', \
                     transform=transform, image_set=mode, download=download)
@@ -75,7 +75,7 @@ class PascalVOC2012Dataset(Dataset):
 
         ## convert to compatible label for YOLO
         yolo_label = self.get_yolo_label(label)
-        return img, yolo_label
+        return (img, yolo_label)
 
     def get_yolo_label(self, label):
         w = int(label['annotation']['size']['width'])
@@ -112,24 +112,6 @@ class PascalVOC2012Dataset(Dataset):
         h = h*dh
         return (x,y,w,h)
 
-    def convert_label(self, label, classes):
-        """Convert the numerical label to n-hot encoding.
-
-        Params:
-        -------
-        - label: a string of conditions corresponding to an image's class
-
-        Returns:
-        --------
-        - binary_label: (Tensor) a binary encoding of the multi-class label
-        """
-
-        binary_label = torch.zeros(len(classes))
-        for key, value in classes.items():
-            if value in label:
-                binary_label[key] = 1.0
-        return binary_label
-
 #%%
 
 def create_split_loaders(root_dir, batch_size, seed=15,
@@ -162,8 +144,14 @@ def create_split_loaders(root_dir, batch_size, seed=15,
     - val_loader: (DataLoader) The iterator for the validation set
     - test_loader: (DataLoader) The iterator for the test set
     """
-    transform = Compose([Resize(416), RandomHorizontalFlip(),RandomVerticalFlip(),
-                         ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    transform = transforms.Compose(
+        [
+            transforms.Resize((416,416)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.ToTensor()
+        ])
+    #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 
     dataset = PascalVOC2012Dataset(root_dir=root_dir, transform=transform)
 
@@ -213,16 +201,3 @@ def create_split_loaders(root_dir, batch_size, seed=15,
 
     # Return the training, validation, test DataLoader objects
     return (train_loader, val_loader, test_loader)
-
-#%%
-if __name__ == '__main__':
-    root_dir = os.getcwd()
-    
-    transform = Compose([Resize(416), RandomHorizontalFlip(),RandomVerticalFlip(),
-                         ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-    data = PascalVOC2012Dataset(root_dir=root_dir, transform=transform, download=False)
-    img, label = data.__getitem__(0)
-    print(label)
-
-    dataloaders = create_split_loaders(root_dir=root_dir, batch_size=64)
