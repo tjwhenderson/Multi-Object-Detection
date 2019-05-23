@@ -75,28 +75,34 @@ class PascalVOC2012Dataset(Dataset):
 
         ## convert to compatible label for YOLO
         yolo_label = self.get_yolo_label(label)
-        return (img, yolo_label)
+        
+        sample = {'image': img, 'label': yolo_label}
+        return sample
 
     def get_yolo_label(self, label):
         w = int(label['annotation']['size']['width'])
         h = int(label['annotation']['size']['height'])
         obj = label['annotation']['object']
-        yolo_label = []
 
         if isinstance(obj, list): # contains multiple objects
-            for obj_i in obj:
+            nL = len(obj)  # number of labels
+            yolo_label = np.zeros((nL, 5))
+            for n, obj_i in enumerate(obj):
                 clsid_i = self.classes.index( obj_i['name'] )
                 b_i = (float(obj_i['bndbox']['xmin']), float(obj_i['bndbox']['xmax']), \
                        float(obj_i['bndbox']['ymin']), float(obj_i['bndbox']['ymax']))
                 bbox_i = self.convert_bbox((w,h), b_i)
-                yolo_label.append([clsid_i, bbox_i])
+                yolo_label[n,0] = clsid_i
+                yolo_label[n,1:] = torch.from_numpy(np.array(bbox_i))
 
         else: # contains single object
+            yolo_label = np.zeros((1, 5))
             clsid = self.classes.index( obj['name'] )
             b = (float(obj['bndbox']['xmin']), float(obj['bndbox']['xmax']), \
                  float(obj['bndbox']['ymin']), float(obj['bndbox']['ymax']))
             bbox = self.convert_bbox((w,h), b)
-            yolo_label.append([clsid, bbox])
+            yolo_label[0,0] = clsid
+            yolo_label[0,1:] = torch.from_numpy(np.array(bbox))
         return yolo_label
 
     def convert_bbox(self, size, box):
