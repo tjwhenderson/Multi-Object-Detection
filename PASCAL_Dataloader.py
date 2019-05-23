@@ -50,6 +50,7 @@ class PascalVOC2012Dataset(Dataset):
         self.classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", \
                         "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", \
                         "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
+        self.max_objects = 20
 
     def __len__(self):
         """Returns the total number of samples in the dataset
@@ -75,34 +76,33 @@ class PascalVOC2012Dataset(Dataset):
 
         ## convert to compatible label for YOLO
         yolo_label = self.get_yolo_label(label)
-        
-        sample = {'image': img, 'label': yolo_label}
-        return sample
+        # sample = {'image': img, 'label': yolo_label}
+        return img, yolo_label
 
     def get_yolo_label(self, label):
         w = int(label['annotation']['size']['width'])
         h = int(label['annotation']['size']['height'])
         obj = label['annotation']['object']
 
+        yolo_label = torch.zeros((self.max_objects, 5))
+
         if isinstance(obj, list): # contains multiple objects
-            nL = len(obj)  # number of labels
-            yolo_label = np.zeros((nL, 5))
-            for n, obj_i in enumerate(obj):
-                clsid_i = self.classes.index( obj_i['name'] )
-                b_i = (float(obj_i['bndbox']['xmin']), float(obj_i['bndbox']['xmax']), \
+            for i, obj_i in enumerate(obj):
+                clsid = self.classes.index( obj_i['name'] )
+                b = (float(obj_i['bndbox']['xmin']), float(obj_i['bndbox']['xmax']), \
                        float(obj_i['bndbox']['ymin']), float(obj_i['bndbox']['ymax']))
-                bbox_i = self.convert_bbox((w,h), b_i)
-                yolo_label[n,0] = clsid_i
-                yolo_label[n,1:] = torch.from_numpy(np.array(bbox_i))
+                x,y,w,h = self.convert_bbox((w,h), b)
+                yolo_label[i,0] = clsid
+                yolo_label[i,1:] = torch.FloatTensor([x,y,w,h])
 
         else: # contains single object
-            yolo_label = np.zeros((1, 5))
             clsid = self.classes.index( obj['name'] )
             b = (float(obj['bndbox']['xmin']), float(obj['bndbox']['xmax']), \
                  float(obj['bndbox']['ymin']), float(obj['bndbox']['ymax']))
-            bbox = self.convert_bbox((w,h), b)
+            x,y,w,h = self.convert_bbox((w,h), b)
             yolo_label[0,0] = clsid
-            yolo_label[0,1:] = torch.from_numpy(np.array(bbox))
+            yolo_label[0,1:] = torch.FloatTensor([x,y,w,h])
+            # yolo_label[0,1:] = torch.from_numpy(np.array(bbox))
         return yolo_label
 
     def convert_bbox(self, size, box):
@@ -203,7 +203,6 @@ def create_split_loaders(root_dir, batch_size, seed=15,
     val_loader = DataLoader(dataset, batch_size=batch_size,
                             sampler=sample_val, num_workers=num_workers,
                             pin_memory=pin_memory)
-
 
     # Return the training, validation, test DataLoader objects
     return (train_loader, val_loader, test_loader)
