@@ -3,6 +3,10 @@ import torch.nn as nn
 import numpy as np
 from collections import OrderedDict
 import math
+import cv2
+import torchvision as tv
+from PIL import Image
+
 
 class Darknet(nn.Module):
     ''' backbone architecture'''
@@ -19,10 +23,6 @@ class Darknet(nn.Module):
         self.layer4 = self.make_layer([256, 512], layers[3])
         self.layer5 = self.make_layer([512, 1024], layers[4])
         self.layers_out_filters = [64, 128, 256, 512, 1024]
-        
-        #do we need these?
-        #self.seen = 0
-        #self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
         
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -98,6 +98,7 @@ class BasicBlock(nn.Module):
         return out
 
 
+
 class yoloModel(nn.Module):
     def __init__(self, config):
         super(yoloModel, self).__init__()
@@ -123,7 +124,7 @@ class yoloModel(nn.Module):
     def _make_cbl(self, _in, _out, ks):
         ''' cbl = conv + batch_norm + leaky_relu
         '''
-        pad = (ks - 1) // 2 if ks else 0
+        pad = (ks - 1) // 2
         return nn.Sequential(OrderedDict([
             ("conv", nn.Conv2d(_in, _out, kernel_size=ks, stride=1, padding=pad, bias=False)),
             ("bn", nn.BatchNorm2d(_out)),
@@ -163,7 +164,7 @@ class yoloModel(nn.Module):
         x2_in = self.embedding2_upsample(x2_in)
         x2_in = torch.cat([x2_in, x2], 1)
         out2, out2_branch = _branch(self.embedding2, x2_in)
-        return out0, out1, out2_branch
+        return out0, out1, out2
     
     def load_darknet_weights(self, weights_path):
         import numpy as np
@@ -229,5 +230,7 @@ class yoloModel(nn.Module):
                     v.copy_(vv)
                     ptr += num_b
                     last_conv = None
+
+
 
 
