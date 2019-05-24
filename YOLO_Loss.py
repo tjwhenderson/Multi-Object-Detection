@@ -75,59 +75,55 @@ class YoloLoss(nn.Module):
     def parse_targets(self, targets, anchors, grid_w, grid_h, threshold):
         
         # Initalize variables
-        batch_size = 1#targets.size(0)
-        # TODO: add 1dimension batch_size back in
-        mask = torch.zeros(1, self.num_anchors, grid_w, grid_h, requires_grad=False)
-        noobj_mask = torch.ones(self.num_anchors, grid_w, grid_h, requires_grad=False)
-        t_x = torch.zeros(self.num_anchors, grid_w, grid_h, requires_grad=False)
-        t_y = torch.zeros(self.num_anchors, grid_w, grid_h, requires_grad=False)
-        t_w = torch.zeros(self.num_anchors, grid_w, grid_h, requires_grad=False)
-        t_h = torch.zeros(self.num_anchors, grid_w, grid_h, requires_grad=False)
-        t_conf = torch.zeros(1,self.num_anchors, grid_w, grid_h, requires_grad=False)
-        t_class = torch.zeros(1,self.num_anchors, grid_w, grid_h, self.num_classes, requires_grad=False)
+        batch_size = targets.size(0)
+        mask = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        noobj_mask = torch.ones(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        t_x = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        t_y = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        t_w = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        t_h = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        t_conf = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)
+        t_class = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, self.num_classes, requires_grad=False)
         
         # Calculate values
-        #for b in range(batch_size):
-        for t in range(targets.shape[0]): #TODO: chage 0 back to 1
-            # TODO: add 1dimension batch_size back in
-            if targets[t].sum() == 0:
-                continue
-                    
-            # TODO: add 1st dimension b back in
-            #Convert positions to make them relative to box
-            g_x = targets[t,1]*grid_w
-            g_y = targets[t,2]*grid_h
-            g_w = targets[t,3]*grid_w
-            g_h = targets[t,4]*grid_h
-                
-            # Get the indices of the grid box
-            g_i = int(g_x)
-            g_j = int(g_y)
-                
-            # Get shape of ground truth box
-            ground_truth_box = torch.FloatTensor(np.array([0, 0, g_w, g_h])).unsqueeze(0)
-                
-            # Get shape of anchor box
-            anchor_shapes = torch.FloatTensor(np.concatenate((np.zeros((self.num_anchors, 2)),
-                                                              np.array(anchors)), 1))
-            
-            # Calculate the IoU between gt and anchor shapes
-            anchor_ious = IOU(ground_truth_box,anchor_shapes)
-               
-            # Set mask to zero where the overlap is larger than the threshold
-            #TODO: add 1st dimension b back in
-            noobj_mask[anchor_ious > threshold,g_j,g_i] = 0
-               
-            # Find the best matching anchor box
-            n_best = np.argmax(anchor_ious)
+        for b in range(batch_size):
+            for t in range(targets.shape[1]): 
+                if targets[b,t].sum() == 0:
+                    continue
 
-            # TODO: add 1st dimension b back in
-            mask[0,n_best, g_j, g_i] = 1
-            t_x[n_best, g_j, g_i] = g_x - g_i
-            t_y[n_best, g_j, g_i] = g_y - g_j
-            t_w[n_best, g_j, g_i] = math.log(g_w/anchors[n_best][0] + 1e-16)
-            t_h[n_best, g_j, g_i] = math.log(g_h/anchors[n_best][1] + 1e-16)
-            t_conf[0,n_best, g_j, g_i] = 1
-            t_class[0,n_best, g_j, g_i, int(targets[t, 0])] = 1
+                #Convert positions to make them relative to box
+                g_x = targets[b,t,1]*grid_w
+                g_y = targets[b,t,2]*grid_h
+                g_w = targets[b,t,3]*grid_w
+                g_h = targets[b,t,4]*grid_h
+
+                # Get the indices of the grid box
+                g_i = int(g_x)
+                g_j = int(g_y)
+
+                # Get shape of ground truth box
+                ground_truth_box = torch.FloatTensor(np.array([0, 0, g_w, g_h])).unsqueeze(0)
+
+                # Get shape of anchor box
+                anchor_shapes = torch.FloatTensor(np.concatenate((np.zeros((self.num_anchors, 2)),
+                                                                  np.array(anchors)), 1))
+
+                # Calculate the IoU between gt and anchor shapes
+                anchor_ious = IOU(ground_truth_box,anchor_shapes)
+
+                # Set mask to zero where the overlap is larger than the threshold
+                noobj_mask[b,anchor_ious > threshold,g_j,g_i] = 0
+
+                # Find the best matching anchor box
+                n_best = np.argmax(anchor_ious)
+
+                # TODO: add 1st dimension b back in
+                mask[b, n_best, g_j, g_i] = 1
+                t_x[b, n_best, g_j, g_i] = g_x - g_i
+                t_y[b, n_best, g_j, g_i] = g_y - g_j
+                t_w[b, n_best, g_j, g_i] = math.log(g_w/anchors[n_best][0] + 1e-16)
+                t_h[b, n_best, g_j, g_i] = math.log(g_h/anchors[n_best][1] + 1e-16)
+                t_conf[b, n_best, g_j, g_i] = 1
+                t_class[b, n_best, g_j, g_i, int(targets[b, t, 0])] = 1
             
         return mask, noobj_mask, t_x, t_y, t_w, t_h, t_conf, t_class
