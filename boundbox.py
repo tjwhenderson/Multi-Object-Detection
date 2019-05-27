@@ -24,21 +24,6 @@ def get_bbox_abscoords(bbox):
     bbox_abs = Boundbox(xmin, ymin, xmax, ymax)
     return bbox_abs
 
-
-def IOU(bbox1, bbox2):
-    bbox1_abs = get_bbox_abscoords(bbox1)
-    bbox2_abs = get_bbox_abscoords(bbox1)
-    intersect_w = bbox_intersect([bbox1_abs.xmin, bbox1_abs.xmax], [bbox2_abs.xmin, bbox2_abs.xmax])
-    intersect_h = bbox_intersect([bbox1_abs.ymin, bbox1_abs.ymax], [bbox2_abs.ymin, bbox2_abs.ymax])
-
-    intersect = intersect_w * intersect_h
-
-    w1, h1 = bbox1[:,1], bbox1[:,3]
-    w2, h2 = bbox2[:,1], bbox2[:,3]
-
-    union = w1*h1 + w2*h2 - intersect
-    return float(intersect) / union
-
 def bbox_intersect(interval_a, interval_b):
     x1, x2 = interval_a
     x3, x4 = interval_b
@@ -53,3 +38,17 @@ def bbox_intersect(interval_a, interval_b):
              return 0
         else:
             return min(x2,x4) - x3
+
+def IOU(bbox1, bbox2):
+    bbox1_abs = get_bbox_abscoords(bbox1)
+    bbox2_abs = get_bbox_abscoords(bbox1)
+    intersect_w = bbox_intersect([bbox1_abs.xmin, bbox1_abs.xmax], [bbox2_abs.xmin, bbox2_abs.xmax])
+    intersect_h = bbox_intersect([bbox1_abs.ymin, bbox1_abs.ymax], [bbox2_abs.ymin, bbox2_abs.ymax])
+
+    intersect = intersect_w * intersect_h
+
+    w1, h1 = bbox1[:,1], bbox1[:,3]
+    w2, h2 = bbox2[:,1], bbox2[:,3]
+
+    union = w1*h1 + w2*h2 - intersect
+    return float(intersect) / union
