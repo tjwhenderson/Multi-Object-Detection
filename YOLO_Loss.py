@@ -29,7 +29,7 @@ class YoloLoss(nn.Module):
         self.mseloss = nn.MSELoss()
         self.bceloss = nn.BCELoss()
 
-    def forward(self, inputs, targets):
+    def forward(self, inputs, targets=None):
         # Initialize input variables
         batch_size = np.size(inputs,0)
         grid_w = np.size(inputs,2)
@@ -49,28 +49,53 @@ class YoloLoss(nn.Module):
         conf = torch.sigmoid(pred[...,4])       
         pred_class = torch.sigmoid(pred[...,5:])  
 
-        
-        # Parse variables from targets
-        mask, noobj_mask, t_x, t_y, t_w, t_h, t_conf, t_class = self.parse_targets(targets, anchors_scaled,
-                                                                           grid_w, grid_h,
-                                                                           self.threshold)
-        # Move variables to CUDA device
-        mask, noobj_mask, t_x, t_y, t_w, t_h, t_conf, t_class = mask.cuda(), noobj_mask.cuda(), \
-                    t_x.cuda(), t_y.cuda(), t_w.cuda(), t_h.cuda(), t_conf.cuda(), t_class.cuda()
-        
-        # Calculate the losses between the network outputs and targets
-        loss_x = self.bceloss(x*mask, t_x*mask)
-        loss_y = self.bceloss(y*mask, t_y*mask)
-        loss_w = self.mseloss(w*mask, t_w*mask)
-        loss_h = self.mseloss(h*mask, t_h*mask)
-        loss_conf = self.bceloss(conf*mask, mask) + \
-            0.5*self.bceloss(conf*noobj_mask, noobj_mask*0.0)
-        loss_class = self.bceloss(pred_class[mask == 1], t_class[mask == 1])
-        loss = (loss_x + loss_y + loss_w + loss_h)*self.lambda_coord + \
-           loss_conf*self.lambda_conf + loss_class*self.lambda_class
+        if targets is not None:
+            # Parse variables from targets
+            mask, noobj_mask, t_x, t_y, t_w, t_h, t_conf, t_class = self.parse_targets(targets, anchors_scaled,
+                                                                               grid_w, grid_h,
+                                                                               self.threshold)
+            # Move variables to CUDA device
+            mask, noobj_mask, t_x, t_y, t_w, t_h, t_conf, t_class = mask.cuda(), noobj_mask.cuda(), \
+                        t_x.cuda(), t_y.cuda(), t_w.cuda(), t_h.cuda(), t_conf.cuda(), t_class.cuda()
 
-        return loss, loss_x.item(), loss_y.item(), loss_w.item(),\
-            loss_h.item(), loss_conf.item(), loss_class.item()
+            # Calculate the losses between the network outputs and targets
+            loss_x = self.bceloss(x*mask, t_x*mask)
+            loss_y = self.bceloss(y*mask, t_y*mask)
+            loss_w = self.mseloss(w*mask, t_w*mask)
+            loss_h = self.mseloss(h*mask, t_h*mask)
+            loss_conf = self.bceloss(conf*mask, mask) + \
+                0.5*self.bceloss(conf*noobj_mask, noobj_mask*0.0)
+            loss_class = self.bceloss(pred_class[mask == 1], t_class[mask == 1])
+            loss = (loss_x + loss_y + loss_w + loss_h)*self.lambda_coord + \
+               loss_conf*self.lambda_conf + loss_class*self.lambda_class
+
+            return loss, loss_x.item(), loss_y.item(), loss_w.item(),\
+                loss_h.item(), loss_conf.item(), loss_class.item()
+        
+        else:
+            FloatTensor = torch.cuda.FloatTensor if x.is_cuda else torch.FloatTensor
+            LongTensor = torch.cuda.LongTensor if x.is_cuda else torch.LongTensor
+            # Calculate offsets for each grid
+            grid_x = torch.linspace(0, grid_w-1, grid_w).repeat(grid_w, 1).repeat(
+                batch_size * self.num_anchors, 1, 1).view(x.shape).type(FloatTensor)
+            grid_y = torch.linspace(0, grid_h-1, grid_h).repeat(grid_h, 1).t().repeat(
+                batch_size * self.num_anchors, 1, 1).view(y.shape).type(FloatTensor)
+            # Calculate anchor w, h
+            anch_w = FloatTensor(anchors_scaled).index_select(1, LongTensor([0]))
+            anch_h = FloatTensor(anchors_scaled).index_select(1, LongTensor([1]))
+            anch_w = anch_w.repeat(batch_size, 1).repeat(1, 1, grid_h * grid_w).view(w.shape)
+            anch_h = anch_h.repeat(batch_size, 1).repeat(1, 1, grid_h * grid_w).view(h.shape)
+            # Add offset and scale with anchors
+            pred_boxes = FloatTensor(pred[..., :4].shape)
+            pred_boxes[..., 0] = x.data + grid_x
+            pred_boxes[..., 1] = y.data + grid_y
+            pred_boxes[..., 2] = torch.exp(w.data) * anch_w
+            pred_boxes[..., 3] = torch.exp(h.data) * anch_h
+            # Results
+            _scale = torch.Tensor([str_w, str_h] * 2).type(FloatTensor)
+            output = torch.cat((pred_boxes.view(batch_size, -1, 4) * _scale,
+                                conf.view(batch_size, -1, 1), pred_class.view(batch_size, -1, self.num_classes)), -1)
+            return output.data
         
     def parse_targets(self, targets, anchors, grid_w, grid_h, threshold):
         
