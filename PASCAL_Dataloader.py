@@ -167,7 +167,7 @@ def create_split_loaders(root_dir, batch_size,
 
     # Shuffle dataset before dividing into training & test sets
     if shuffle:
-        np.random.seed()
+        np.random.seed(15)
         np.random.shuffle(all_indices)
 
     # Create the validation split from the full dataset
