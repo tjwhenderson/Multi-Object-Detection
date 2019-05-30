@@ -86,7 +86,7 @@ class PascalVOC2012Dataset(Dataset):
 
         if isinstance(obj, list): # contains multiple objects
             nL = len(obj)  # number of labels
-            yolo_label = np.zeros((100, 5))
+            yolo_label = np.zeros((60, 5))
             for n, obj_i in enumerate(obj):
                 clsid_i = self.classes.index( obj_i['name'] )
                 b_i = (float(obj_i['bndbox']['xmin']), float(obj_i['bndbox']['xmax']), \
@@ -96,7 +96,7 @@ class PascalVOC2012Dataset(Dataset):
                 yolo_label[n,1:] = bbox_i
 
         else: # contains single object
-            yolo_label = np.zeros((100,5))
+            yolo_label = np.zeros((60,5))
             clsid = self.classes.index( obj['name'] )
             b = (float(obj['bndbox']['xmin']), float(obj['bndbox']['xmax']), \
                  float(obj['bndbox']['ymin']), float(obj['bndbox']['ymax']))
@@ -150,14 +150,16 @@ def create_split_loaders(root_dir, batch_size,
     - val_loader: (DataLoader) The iterator for the validation set
     - test_loader: (DataLoader) The iterator for the test set
     """
+    
     transform = transforms.Compose(
         [
             transforms.Resize((416,416)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
+            #transforms.RandomHorizontalFlip(),
+            #transforms.RandomVerticalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
+   
 
     dataset = PascalVOC2012Dataset(root_dir=root_dir, transform=transform)
 
@@ -167,7 +169,7 @@ def create_split_loaders(root_dir, batch_size,
 
     # Shuffle dataset before dividing into training & test sets
     if shuffle:
-        np.random.seed()
+        np.random.seed(15)
         np.random.shuffle(all_indices)
 
     # Create the validation split from the full dataset
