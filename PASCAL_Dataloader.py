@@ -18,12 +18,14 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 from torch.utils.data.sampler import SubsetRandomSampler
-from torchvision.datasets import VOCDetection
+#from torchvision.datasets import VOCDetection
 from torchvision.transforms import Compose, Resize, RandomHorizontalFlip, RandomVerticalFlip, ToTensor, Normalize
 
 
-# Other libraries for data manipulation and visualization
 import os
+import sys
+import tarfile
+import collections
 from PIL import Image
 import numpy as np
 import pandas as pd
@@ -31,22 +33,89 @@ import matplotlib.pyplot as plt
 import pickle
 import xml.etree.ElementTree as ET
 
+#%%
+class VOCDetection(Dataset):
+    def __init__(self, root, image_set='trainval', transforms=None):
+        super(VOCDetection, self).__init__()
+        self.root = root
+        self.image_set = image_set
+        self.transforms = transforms
+
+        voc_root = self.root # roots to PASCALVOC2012
+        image_dir = os.path.join(voc_root, 'JPEGImages')
+        annotation_dir = os.path.join(voc_root, 'Annotations')
+
+        if not os.path.isdir(voc_root):
+            raise RuntimeError('Dataset not found or corrupted.' +
+                               ' You can use download=True to download it')
+
+        splits_dir = os.path.join(voc_root, 'ImageSets/Main')
+
+        split_f = os.path.join(splits_dir, image_set.rstrip('\n') + '.txt')
+
+        if not os.path.exists(split_f):
+            raise ValueError(
+                'Wrong image_set entered! Please use image_set="train" '
+                'or image_set="trainval" or image_set="val" or a valid'
+                'image_set from the VOC ImageSets/Main folder.')
+
+        with open(os.path.join(split_f), "r") as f:
+            file_names = [x.strip() for x in f.readlines()]
+
+        self.images = [os.path.join(image_dir, x + ".jpg") for x in file_names]
+        self.annotations = [os.path.join(annotation_dir, x + ".xml") for x in file_names]
+        assert (len(self.images) == len(self.annotations))
+
+    def __len__(self):
+        return len(self.images)
+    
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+        Returns:
+            tuple: (image, target) where target is a dictionary of the XML tree.
+        """
+        img = Image.open(self.images[index]).convert('RGB')
+        target = self.parse_voc_xml(
+            ET.parse(self.annotations[index]).getroot())
+
+        if self.transforms is not None:
+            img = self.transforms(img)
+
+        return img, target
+
+    def parse_voc_xml(self, node):
+        voc_dict = {}
+        children = list(node)
+        if children:
+            def_dic = collections.defaultdict(list)
+            for dc in map(self.parse_voc_xml, children):
+                for ind, v in dc.items():
+                    def_dic[ind].append(v)
+            voc_dict = {
+                node.tag:
+                    {ind: v[0] if len(v) == 1 else v
+                     for ind, v in def_dic.items()}
+            }
+        if node.text:
+            text = node.text.strip()
+            if not children:
+                voc_dict[node.tag] = text
+        return voc_dict
+
+
+#%%
 class PascalVOC2012Dataset(Dataset):
     """Custom Dataset class for the 2012 PASCAL VOC Dataset.
 
     The expected dataset is stored in the "/datasets/PascalVOC2012/" on ieng6
     """
-    def __init__(self, transform, root_dir, mode='trainval', download=False):
+    def __init__(self, root, transforms=None, mode='trainval'):
         super(PascalVOC2012Dataset, self).__init__()
-        self.data = VOCDetection(root=root_dir, year='2012', \
-                    transform=transform, image_set=mode, download=download)
-
-        # self.classes = {0: "aeroplace", 1: "bicycle", 2: "bird", 3: "boat",
-        #                 4: "bottle", 5: "bus", 6: "car", 7: "cat", 8: "chair",
-        #                 9: "cow", 10: "diningtable", 11: "dog", 12: "horse",
-        #                 13: "motorbike", 14: "person", 15: "pottedplant",
-        #                 16: "sheep", 17: "sofa", 18: "train", 19: "tvmonitor"}
-
+        self.data = VOCDetection(root=root, image_set=mode)
+        self.transforms = transforms
+        
         self.classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", \
                         "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", \
                         "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
@@ -73,9 +142,11 @@ class PascalVOC2012Dataset(Dataset):
 
         img, label = self.data.__getitem__(idx)
 
+        if self.transforms is not None:
+            img = self.transforms(img)
+            
         ## convert to compatible label for YOLO
         yolo_label = self.get_yolo_label(label)
-        
         sample = {"image": img, "label": yolo_label}
         return sample
 
@@ -84,9 +155,8 @@ class PascalVOC2012Dataset(Dataset):
         h = int(label['annotation']['size']['height'])
         obj = label['annotation']['object']
 
-        if isinstance(obj, list): # contains multiple objects
-            nL = len(obj)  # number of labels
-            yolo_label = np.zeros((60, 5))
+        yolo_label = np.zeros((100, 5))
+        if isinstance(obj, list): # contains multiple objects          
             for n, obj_i in enumerate(obj):
                 clsid_i = self.classes.index( obj_i['name'] )
                 b_i = (float(obj_i['bndbox']['xmin']), float(obj_i['bndbox']['xmax']), \
@@ -96,7 +166,6 @@ class PascalVOC2012Dataset(Dataset):
                 yolo_label[n,1:] = bbox_i
 
         else: # contains single object
-            yolo_label = np.zeros((60,5))
             clsid = self.classes.index( obj['name'] )
             b = (float(obj['bndbox']['xmin']), float(obj['bndbox']['xmax']), \
                  float(obj['bndbox']['ymin']), float(obj['bndbox']['ymax']))
@@ -117,6 +186,7 @@ class PascalVOC2012Dataset(Dataset):
         y = y*dh
         h = h*dh
         return (x,y,w,h)
+
 
 #%%
 
@@ -151,18 +221,17 @@ def create_split_loaders(root_dir, batch_size,
     - test_loader: (DataLoader) The iterator for the test set
     """
     
-    transform = transforms.Compose(
-        [
-            transforms.Resize((416,416)),
-            #transforms.RandomHorizontalFlip(),
-            #transforms.RandomVerticalFlip(),
-            transforms.ToTensor(),
-            #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    root_dir = '../VOCdevkit/VOC2012'
+    tf = Compose([
+            Resize((416,416)),
+#            transforms.RandomHorizontalFlip(),
+#            transforms.RandomVerticalFlip(),
+            ToTensor(),
+            Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-   
 
-    dataset = PascalVOC2012Dataset(root_dir=root_dir, transform=transform)
-
+    dataset = PascalVOC2012Dataset(root=root_dir, mode='trainval', transforms=tf)
+    
     # Dimensions and indices of training set
     dataset_size = dataset.__len__()
     all_indices = list(range(dataset_size))
@@ -209,3 +278,21 @@ def create_split_loaders(root_dir, batch_size,
 
     # Return the training, validation, test DataLoader objects
     return train_loader, val_loader, test_loader
+
+#%%
+if __name__ == '__main__':
+#    root_dir = '../VOCdevkit/VOC2012'
+#    
+#    tf = Compose([
+#            Resize((416,416)),
+##            transforms.RandomHorizontalFlip(),
+##            transforms.RandomVerticalFlip(),
+#            ToTensor(),
+#            Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+#        ])
+#
+#    dataset = PascalVOC2012Dataset(root=root_dir, mode='trainval', transforms=tf)
+#    print(dataset.__len__())
+
+
+    
