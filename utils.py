@@ -1,3 +1,4 @@
+import torch
 from boundbox import IOU
 
 def compute_AP(recall, precision):

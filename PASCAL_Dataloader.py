@@ -221,7 +221,7 @@ def create_split_loaders(root_dir, batch_size,
     - test_loader: (DataLoader) The iterator for the test set
     """
     
-    root_dir = '../VOCdevkit/VOC2012'
+    root_dir = './VOCdevkit/VOC2012'
     tf = Compose([
             Resize((416,416)),
 #            transforms.RandomHorizontalFlip(),
@@ -280,7 +280,7 @@ def create_split_loaders(root_dir, batch_size,
     return train_loader, val_loader, test_loader
 
 #%%
-if __name__ == '__main__':
+#if __name__ == '__main__':
 #    root_dir = '../VOCdevkit/VOC2012'
 #    
 #    tf = Compose([

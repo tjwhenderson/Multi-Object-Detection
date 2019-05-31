@@ -3,7 +3,6 @@ import torch.nn as nn
 import numpy as np
 from collections import OrderedDict
 import math
-import cv2
 import torchvision as tv
 from PIL import Image
 
