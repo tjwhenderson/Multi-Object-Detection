@@ -18,7 +18,6 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 from torch.utils.data.sampler import SubsetRandomSampler
-#from torchvision.datasets import VOCDetection
 from torchvision.transforms import Compose, Resize, RandomHorizontalFlip, RandomVerticalFlip, ToTensor, Normalize
 
 
@@ -47,7 +46,7 @@ class VOCDetection(Dataset):
 
         if not os.path.isdir(voc_root):
             raise RuntimeError('Dataset not found or corrupted.' +
-                               ' You can use download=True to download it')
+                               ' Check that it is pointing to the correct root directory.')
 
         splits_dir = os.path.join(voc_root, 'ImageSets/Main')
 
@@ -68,7 +67,7 @@ class VOCDetection(Dataset):
 
     def __len__(self):
         return len(self.images)
-    
+
     def __getitem__(self, index):
         """
         Args:
@@ -115,7 +114,7 @@ class PascalVOC2012Dataset(Dataset):
         super(PascalVOC2012Dataset, self).__init__()
         self.data = VOCDetection(root=root, image_set=mode)
         self.transforms = transforms
-        
+
         self.classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", \
                         "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", \
                         "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
@@ -144,10 +143,10 @@ class PascalVOC2012Dataset(Dataset):
 
         if self.transforms is not None:
             img = self.transforms(img)
-            
+
         ## convert to compatible label for YOLO
-        yolo_label = self.get_yolo_label(label)
-        sample = {"image": img, "label": yolo_label}
+        yolo_label, target_label = self.get_yolo_label(label)
+        sample = {"image": img, "label": yolo_label, "orig_img": orig_img, "target_label": target_label}
         return sample
 
     def get_yolo_label(self, label):
@@ -155,8 +154,10 @@ class PascalVOC2012Dataset(Dataset):
         h = int(label['annotation']['size']['height'])
         obj = label['annotation']['object']
 
-        yolo_label = np.zeros((100, 5))
-        if isinstance(obj, list): # contains multiple objects          
+        yolo_label = np.zeros((80, 5))
+        target_label = np.zeros((80, 5)) ### returns groundtruth labels [xmin, ymin, xmax, ymax]
+
+        if isinstance(obj, list): # contains multiple objects
             for n, obj_i in enumerate(obj):
                 clsid_i = self.classes.index( obj_i['name'] )
                 b_i = (float(obj_i['bndbox']['xmin']), float(obj_i['bndbox']['xmax']), \
@@ -164,6 +165,8 @@ class PascalVOC2012Dataset(Dataset):
                 bbox_i = self.convert_bbox((w,h), b_i)
                 yolo_label[n,0] = clsid_i
                 yolo_label[n,1:] = bbox_i
+                target_label[n,0] = clsid_i
+                target_label[n,1:] = b_i
 
         else: # contains single object
             clsid = self.classes.index( obj['name'] )
@@ -172,7 +175,9 @@ class PascalVOC2012Dataset(Dataset):
             bbox = self.convert_bbox((w,h), b)
             yolo_label[0,0] = clsid
             yolo_label[0,1:] = bbox
-        return yolo_label
+            target_label[0,0] = clsid
+            target_label[0,1:] = b
+        return yolo_label, target_label
 
     def convert_bbox(self, size, box):
         dw = 1./(size[0])
@@ -220,7 +225,7 @@ def create_split_loaders(root_dir, batch_size,
     - val_loader: (DataLoader) The iterator for the validation set
     - test_loader: (DataLoader) The iterator for the test set
     """
-    
+
     root_dir = './VOCdevkit/VOC2012'
     tf = Compose([
             Resize((416,416)),
@@ -231,7 +236,7 @@ def create_split_loaders(root_dir, batch_size,
         ])
 
     dataset = PascalVOC2012Dataset(root=root_dir, mode='trainval', transforms=tf)
-    
+
     # Dimensions and indices of training set
     dataset_size = dataset.__len__()
     all_indices = list(range(dataset_size))
@@ -282,7 +287,7 @@ def create_split_loaders(root_dir, batch_size,
 #%%
 #if __name__ == '__main__':
 #    root_dir = '../VOCdevkit/VOC2012'
-#    
+#
 #    tf = Compose([
 #            Resize((416,416)),
 ##            transforms.RandomHorizontalFlip(),
@@ -293,6 +298,3 @@ def create_split_loaders(root_dir, batch_size,
 #
 #    dataset = PascalVOC2012Dataset(root=root_dir, mode='trainval', transforms=tf)
 #    print(dataset.__len__())
-
-
-    
