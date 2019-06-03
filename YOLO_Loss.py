@@ -5,7 +5,7 @@ import torch.nn as nn
 
 
 # TODO: Import bbox script
-from boundbox import IOU
+from bbox import bbox_iou
 
 
 class YoloLoss(nn.Module):
@@ -134,7 +134,7 @@ class YoloLoss(nn.Module):
                                                                   np.array(anchors)), 1))
 
                 # Calculate the IoU between gt and anchor shapes
-                anchor_ious = IOU(ground_truth_box,anchor_shapes)
+                anchor_ious = bbox_iou(ground_truth_box,anchor_shapes)
 
                 # Set mask to zero where the overlap is larger than the threshold
                 noobj_mask[b,anchor_ious > threshold,g_j,g_i] = 0
