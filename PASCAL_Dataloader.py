@@ -137,16 +137,24 @@ class PascalVOC2012Dataset(Dataset):
         - img: transformed tensor image at the specified index
         - label: corresponding label of the image as an array
                  with the values : [class, x, y, w, h]
+        - orig_img: filename of original image, create a path to its location
+        - target_label: corresponding label of the image as an array
+                 with the values : [class, xmin, xmax, ymin, ymax]
         """
 
         img, label = self.data.__getitem__(idx)
-
+        filename = label['annotation']['filename']
+   
+        w = int(label['annotation']['size']['width'])
+        h = int(label['annotation']['size']['height'])
+        orig_img = (w, h)
         if self.transforms is not None:
             img = self.transforms(img)
 
         ## convert to compatible label for YOLO
         yolo_label, target_label = self.get_yolo_label(label)
-        sample = {"image": img, "label": yolo_label, "orig_img": orig_img, "target_label": target_label}
+        
+        sample = {"image": img, "label": yolo_label, "orig_img": orig_img, "target_label": target_label, "imgfile": filename}
         return sample
 
     def get_yolo_label(self, label):
@@ -154,8 +162,8 @@ class PascalVOC2012Dataset(Dataset):
         h = int(label['annotation']['size']['height'])
         obj = label['annotation']['object']
 
-        yolo_label = np.zeros((80, 5))
-        target_label = np.zeros((80, 5)) ### returns groundtruth labels [xmin, ymin, xmax, ymax]
+        yolo_label = np.zeros((70, 5))
+        target_label = np.zeros((70, 5)) ### returns groundtruth labels [xmin, ymin, xmax, ymax]         
 
         if isinstance(obj, list): # contains multiple objects
             for n, obj_i in enumerate(obj):
@@ -166,8 +174,8 @@ class PascalVOC2012Dataset(Dataset):
                 yolo_label[n,0] = clsid_i
                 yolo_label[n,1:] = bbox_i
                 target_label[n,0] = clsid_i
-                target_label[n,1:] = b_i
-
+                target_label[n,1:] = (float(obj_i['bndbox']['xmin']), float(obj_i['bndbox']['ymin']), \
+                                      float(obj_i['bndbox']['xmax']), float(obj_i['bndbox']['ymax']))
         else: # contains single object
             clsid = self.classes.index( obj['name'] )
             b = (float(obj['bndbox']['xmin']), float(obj['bndbox']['xmax']), \
@@ -176,7 +184,8 @@ class PascalVOC2012Dataset(Dataset):
             yolo_label[0,0] = clsid
             yolo_label[0,1:] = bbox
             target_label[0,0] = clsid
-            target_label[0,1:] = b
+            target_label[0,1:] = (float(obj['bndbox']['xmin']), float(obj['bndbox']['ymin']), \
+                                  float(obj['bndbox']['xmax']), float(obj['bndbox']['ymax']))
         return yolo_label, target_label
 
     def convert_bbox(self, size, box):
@@ -226,14 +235,13 @@ def create_split_loaders(root_dir, batch_size,
     - test_loader: (DataLoader) The iterator for the test set
     """
 
-    root_dir = './VOCdevkit/VOC2012'
+
     tf = Compose([
             Resize((416,416)),
 #            transforms.RandomHorizontalFlip(),
 #            transforms.RandomVerticalFlip(),
             ToTensor(),
-            Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        ])
+            Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
     dataset = PascalVOC2012Dataset(root=root_dir, mode='trainval', transforms=tf)
 
@@ -272,29 +280,17 @@ def create_split_loaders(root_dir, batch_size,
                               sampler=sample_train, num_workers=num_workers,
                               pin_memory=pin_memory)
 
+    ## set num_workers to 0
     test_loader = DataLoader(dataset, batch_size=batch_size,
-                             sampler=sample_test, num_workers=num_workers,
-                              pin_memory=pin_memory)
+                             sampler=sample_test, num_workers=0,
+                             pin_memory=pin_memory)
 
     val_loader = DataLoader(dataset, batch_size=batch_size,
                             sampler=sample_val, num_workers=num_workers,
                             pin_memory=pin_memory)
 
-
     # Return the training, validation, test DataLoader objects
     return train_loader, val_loader, test_loader
 
-#%%
-#if __name__ == '__main__':
-#    root_dir = '../VOCdevkit/VOC2012'
-#
-#    tf = Compose([
-#            Resize((416,416)),
-##            transforms.RandomHorizontalFlip(),
-##            transforms.RandomVerticalFlip(),
-#            ToTensor(),
-#            Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-#        ])
-#
-#    dataset = PascalVOC2012Dataset(root=root_dir, mode='trainval', transforms=tf)
-#    print(dataset.__len__())
+
+

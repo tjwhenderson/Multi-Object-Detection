@@ -1,5 +1,19 @@
 import torch
+import numpy as np
 from boundbox import IOU
+
+def remove_nulls(labels):
+    return labels[~(labels==0).all(1)]
+
+def convert_to_xywh(labels):
+    xywh = np.zeros((len(labels),5), dtype=int)
+    cls = labels[:,0]
+    xmin, ymin, xmax, ymax = labels[:,1], labels[:,2], labels[:,3], labels[:,4]
+    for i in range(len(labels)):
+        w = xmax[i] - xmin[i]
+        h = ymax[i] - ymin[i]
+        xywh[i,:] = (cls[i], xmin[i], ymin[i], w, h)
+    return xywh
 
 def compute_AP(recall, precision):
     """ Compute the average precision, given the recall and precision curves.
