@@ -61,11 +61,12 @@ def NMS(prediction, num_classes=20, conf_thresh=0.5, nms_thresh=0.4):
 
     """
 
-    ### Conversion  of bounding box abs coordinates is done in boundbox.py ###
-
-    bbox = prediction[:,:,:4]
-    obj_score = prediction[:,:,4]
-    cls_scores = prediction[:,:,5:]
+    bbox = prediction.new(prediction.shape)
+    bbox[:, :, 0] = prediction[:, :, 0] - prediction[:, :, 2] / 2
+    bbox[:, :, 1] = prediction[:, :, 1] - prediction[:, :, 3] / 2
+    bbox[:, :, 2] = prediction[:, :, 0] + prediction[:, :, 2] / 2
+    bbox[:, :, 3] = prediction[:, :, 1] + prediction[:, :, 3] / 2
+    prediction[:, :, :4] = bbox[:, :, :4]
 
     output = [None for _ in range(len(prediction))]
 
