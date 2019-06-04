@@ -3,8 +3,6 @@ import math
 import torch
 import torch.nn as nn
 
-
-# TODO: Import bbox script
 from bbox import bbox_iou
 
 
