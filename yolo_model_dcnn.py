@@ -9,7 +9,6 @@ import torch.nn as nn
 import numpy as np
 from collections import OrderedDict
 import math
-import cv2
 import torchvision as tv
 from PIL import Image
 from scipy.ndimage.interpolation import map_coordinates as sp_map_coordinates
