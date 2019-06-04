@@ -34,23 +34,29 @@ import xml.etree.ElementTree as ET
 
 #%%
 class VOCDetection(Dataset):
-    def __init__(self, root, image_set='trainval', transforms=None):
+    def __init__(self, image_set='trainval', transforms=None):
         super(VOCDetection, self).__init__()
-        self.root = root
         self.image_set = image_set
         self.transforms = transforms
+        
+        self.image_dir = "/datasets/ee285f-public/PascalVOC2012/JPEGImages/"
+        self.annotation_dir = "/datasets/ee285f-public/PascalVOC2012/Annotations/"
+        self.splits_dir = "/datasets/ee285f-public/PascalVOC2012/ImageSets/Main/"
 
+        '''
         voc_root = self.root # roots to PASCALVOC2012
         image_dir = os.path.join(voc_root, 'JPEGImages')
         annotation_dir = os.path.join(voc_root, 'Annotations')
+        
 
         if not os.path.isdir(voc_root):
             raise RuntimeError('Dataset not found or corrupted.' +
                                ' Check that it is pointing to the correct root directory.')
+        '''
 
-        splits_dir = os.path.join(voc_root, 'ImageSets/Main')
+        #splits_dir = os.path.join(voc_root, 'ImageSets/Main')
 
-        split_f = os.path.join(splits_dir, image_set.rstrip('\n') + '.txt')
+        split_f = os.path.join(self.splits_dir, image_set.rstrip('\n') + '.txt')
 
         if not os.path.exists(split_f):
             raise ValueError(
@@ -61,8 +67,8 @@ class VOCDetection(Dataset):
         with open(os.path.join(split_f), "r") as f:
             file_names = [x.strip() for x in f.readlines()]
 
-        self.images = [os.path.join(image_dir, x + ".jpg") for x in file_names]
-        self.annotations = [os.path.join(annotation_dir, x + ".xml") for x in file_names]
+        self.images = [os.path.join(self.image_dir, x + ".jpg") for x in file_names]
+        self.annotations = [os.path.join(self.annotation_dir, x + ".xml") for x in file_names]
         assert (len(self.images) == len(self.annotations))
 
     def __len__(self):
@@ -110,9 +116,9 @@ class PascalVOC2012Dataset(Dataset):
 
     The expected dataset is stored in the "/datasets/PascalVOC2012/" on ieng6
     """
-    def __init__(self, root, transforms=None, mode='trainval'):
+    def __init__(self, transforms=None, mode='trainval'):
         super(PascalVOC2012Dataset, self).__init__()
-        self.data = VOCDetection(root=root, image_set=mode)
+        self.data = VOCDetection(image_set=mode)
         self.transforms = transforms
 
         self.classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", \
@@ -204,7 +210,7 @@ class PascalVOC2012Dataset(Dataset):
 
 #%%
 
-def create_split_loaders(root_dir, batch_size,
+def create_split_loaders(batch_size,
                          p_val=0.1, p_test=0.2, shuffle=True,
                          show_sample=False, extras={}):
     """ Creates the DataLoader objects for the training, validation, and test sets.
@@ -243,7 +249,7 @@ def create_split_loaders(root_dir, batch_size,
             ToTensor(),
             Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-    dataset = PascalVOC2012Dataset(root=root_dir, mode='trainval', transforms=tf)
+    dataset = PascalVOC2012Dataset(mode='trainval', transforms=tf)
 
     # Dimensions and indices of training set
     dataset_size = dataset.__len__()
