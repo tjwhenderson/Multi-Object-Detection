@@ -1,6 +1,7 @@
 import torch
 import numpy as np
-from boundbox import IOU
+# from boundbox import IOU
+from bbox import bbox_iou
 
 def remove_nulls(labels):
     return labels[~(labels==0).all(1)]
@@ -102,7 +103,7 @@ def NMS(prediction, num_classes=20, conf_thresh=0.5, nms_thresh=0.4):
                     break
 
                 # get IOUs for all boxes with lower confidence
-                ious = IOU(max_detections[-1], class_detection[1:])
+                ious = bbox_iou(max_detections[-1], class_detection[1:])
                 # Remove detections with IoU >= NMS threshold
                 class_detection = class_detection[1:][ious < nms_thresh]
 
