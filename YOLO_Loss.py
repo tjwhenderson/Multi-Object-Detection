@@ -50,8 +50,7 @@ class YoloLoss(nn.Module):
         if targets is not None:
             # Parse variables from targets
             mask, noobj_mask, t_x, t_y, t_w, t_h, t_conf, t_class = self.parse_targets(targets, anchors_scaled,
-                                                                               grid_w, grid_h,
-                                                                               self.threshold)
+                                                                               grid_w, grid_h, self.threshold)
             # Move variables to CUDA device
             mask, noobj_mask, t_x, t_y, t_w, t_h, t_conf, t_class = mask.cuda(), noobj_mask.cuda(), \
                         t_x.cuda(), t_y.cuda(), t_w.cuda(), t_h.cuda(), t_conf.cuda(), t_class.cuda()
@@ -96,7 +95,6 @@ class YoloLoss(nn.Module):
             return output.data
         
     def parse_targets(self, targets, anchors, grid_w, grid_h, threshold):
-        
         # Initalize variables
         batch_size = targets.size(0)
         mask = torch.zeros(batch_size, self.num_anchors, grid_w, grid_h, requires_grad=False)

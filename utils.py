@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-# from boundbox import IOU
 from bbox import bbox_iou
 
 def remove_nulls(labels):
@@ -110,7 +109,5 @@ def NMS(prediction, num_classes=20, conf_thresh=0.5, nms_thresh=0.4):
             max_detections = torch.cat(max_detections).data
 
             # add max detections to outputs
-            output[ii] = max_detections if output[ii] is None else torch.cat((output[ii], max_detections))
-
-
+            output[ii] = max_detections if output[ii] is None else torch.cat((output[ii], max_detections)
     return output

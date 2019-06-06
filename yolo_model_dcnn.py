@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
 import torch
 import torch.nn as nn
 import numpy as np
@@ -13,9 +10,6 @@ import torchvision as tv
 from PIL import Image
 from scipy.ndimage.interpolation import map_coordinates as sp_map_coordinates
 from torch.autograd import Variable
-
-
-# In[3]:
 
 
 class dcnnyoloModel(nn.Module):
@@ -156,9 +150,6 @@ class dcnnyoloModel(nn.Module):
                     last_conv = None
 
 
-# In[2]:
-
-
 class ConvOffset2D(nn.Conv2d):
     def __init__(self, filters, init_normal_stddev=0.01, **kwargs):
         self.filters = filters
@@ -216,11 +207,8 @@ class ConvOffset2D(nn.Conv2d):
         """(b*c, h, w) -> (b, c, h, w)"""
         x = x.contiguous().view(-1, int(x_shape[1]), int(x_shape[2]), int(x_shape[3]))
         return x
-
-
-# In[4]:
-
-
+    
+    
 class Darknet(nn.Module):
     ''' backbone architecture'''
     def __init__(self, layers):
@@ -286,9 +274,6 @@ def darknet53(pretrained, **kwargs):
         return model
 
 
-# In[6]:
-
-
 class BasicBlock(nn.Module):
     def __init__(self, inplanes, planes):
         super(BasicBlock, self).__init__()
@@ -316,9 +301,6 @@ class BasicBlock(nn.Module):
         return out
 
 
-# In[ ]:
-
-
 def th_batch_map_offsets(input, offsets, grid=None, order=1):
     """Batch map offsets into input
     Parameters
@@ -343,9 +325,6 @@ def th_batch_map_offsets(input, offsets, grid=None, order=1):
     return mapped_vals
 
 
-# In[9]:
-
-
 def th_generate_grid(batch_size, input_height, input_width, dtype, cuda):
     grid = np.meshgrid(
         range(input_height), range(input_width), indexing='ij'
@@ -368,9 +347,6 @@ def np_repeat_2d(a, repeats):
     return a
 
 
-# In[10]:
-
-
 def th_batch_map_coordinates(input, coords, order=1):
     """Batch version of th_map_coordinates
     Only supports 2D feature maps
@@ -390,7 +366,6 @@ def th_batch_map_coordinates(input, coords, order=1):
     n_coords = coords.size(1)
 
     # coords = torch.clamp(coords, 0, input_size - 1)
-
     coords = torch.cat((torch.clamp(coords.narrow(2, 0, 1), 0, input_height - 1), torch.clamp(coords.narrow(2, 1, 1), 0, input_width - 1)), 2)
 
     assert (coords.size(1) == n_coords)
@@ -423,9 +398,6 @@ def th_batch_map_coordinates(input, coords, order=1):
     vals_b = coords_offset_lt[..., 0]*(vals_rb - vals_lb) + vals_lb
     mapped_vals = coords_offset_lt[..., 1]* (vals_b - vals_t) + vals_t
     return mapped_vals
-
-
-# In[12]:
 
 
 def th_repeat(a, repeats, axis=0):
