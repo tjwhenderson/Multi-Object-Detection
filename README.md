@@ -8,7 +8,7 @@ This is a multi-object detection project that implements YOLO v3 as well as modi
 Requirements
 ============
 Download trained weights for the models at:
-{https://drive.google.com/drive/folders/1lQaYc3YLu6g93hqbXkdLnEgGrm2Aszuk}
+https://drive.google.com/drive/folders/1lQaYc3YLu6g93hqbXkdLnEgGrm2Aszuk
 
 
 Code Organization
