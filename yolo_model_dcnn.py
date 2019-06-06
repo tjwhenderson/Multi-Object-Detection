@@ -57,12 +57,12 @@ class dcnnyoloModel(nn.Module):
 
     def _make_embedding(self, filters_list, in_filters, out_filter):
         m = nn.ModuleList([
-            self._make_cbl(in_filters, filters_list[0], 1),
+            self._make_cbl1(in_filters, filters_list[0], 1),
             self._make_cbl(filters_list[0], filters_list[1], 3),
             self._make_cbl(filters_list[1], filters_list[0], 1),
             self._make_cbl(filters_list[0], filters_list[1], 3),
             self._make_cbl(filters_list[1], filters_list[0], 1),
-            self._make_cbl1(filters_list[0], filters_list[1], 3)])
+            self._make_cbl(filters_list[0], filters_list[1], 3)])
         m.add_module("conv_out", nn.Conv2d(filters_list[1], out_filter, kernel_size=1,
                                            stride=1, padding=0, bias=True))
         return m
