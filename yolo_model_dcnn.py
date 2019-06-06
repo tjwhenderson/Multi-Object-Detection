@@ -26,7 +26,7 @@ class dcnnyoloModel(nn.Module):
         _out_filters = self.backbone.layers_out_filters
         final_out_filter0 = len(config["anchors"][0]) * (5 + config["classes"])
         self.embedding0 = self._make_embedding([512, 1024], _out_filters[-1], final_out_filter0)
-        
+
         final_out_filter1 = len(config["anchors"][1]) * (5 + config["classes"])
         self.embedding1_cbl = self._make_cbl(512, 256, 1)
         self.embedding1_upsample = nn.Upsample(scale_factor=2, mode='nearest')
@@ -36,9 +36,17 @@ class dcnnyoloModel(nn.Module):
         self.embedding2_cbl = self._make_cbl(256, 128, 1)
         self.embedding2_upsample = nn.Upsample(scale_factor=2, mode='nearest')
         self.embedding2 = self._make_embedding([128, 256], _out_filters[-3] + 128, final_out_filter2)
-        
+
     def _make_cbl(self, _in, _out, ks):
-        #add deform layer (offesets to pass into conv)
+        pad = (ks - 1) // 2
+        return nn.Sequential(OrderedDict([
+            ("conv", nn.Conv2d(_in, _out, kernel_size=ks, stride=1, padding=pad, bias=False)),
+            ("bn", nn.BatchNorm2d(_out)),
+            ("relu", nn.LeakyReLU(0.1)),
+        ]))
+
+    def _make_cbl1(self, _in, _out, ks):
+        #add deform layer (offsets to pass into conv)
         pad = (ks - 1) // 2
         return nn.Sequential(OrderedDict([
             ("deform", ConvOffset2D(_in)),
@@ -54,11 +62,11 @@ class dcnnyoloModel(nn.Module):
             self._make_cbl(filters_list[1], filters_list[0], 1),
             self._make_cbl(filters_list[0], filters_list[1], 3),
             self._make_cbl(filters_list[1], filters_list[0], 1),
-            self._make_cbl(filters_list[0], filters_list[1], 3)])
+            self._make_cbl1(filters_list[0], filters_list[1], 3)])
         m.add_module("conv_out", nn.Conv2d(filters_list[1], out_filter, kernel_size=1,
                                            stride=1, padding=0, bias=True))
         return m
-    
+
     def forward(self, x):
         def _branch(_embedding, _in):
             for i, e in enumerate(_embedding):
@@ -66,7 +74,7 @@ class dcnnyoloModel(nn.Module):
                 if i == 4:
                     out_branch = _in
             return _in, out_branch
-        
+
         x2, x1, x0 = self.backbone(x)
         #  yolo branch 0
         out0, out0_branch = _branch(self.embedding0, x0)
@@ -81,7 +89,7 @@ class dcnnyoloModel(nn.Module):
         x2_in = torch.cat([x2_in, x2], 1)
         out2, out2_branch = _branch(self.embedding2, x2_in)
         return out0, out1, out2
-    
+
     def load_darknet_weights(self, weights_path):
         import numpy as np
         fp = open(weights_path, "rb")
@@ -221,14 +229,14 @@ class Darknet(nn.Module):
         self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(self.inplanes)
         self.relu1 = nn.LeakyReLU(0.1)
-        
+
         self.layer1 = self.make_layer([32, 64], layers[0])
         self.layer2 = self.make_layer([64, 128], layers[1])
         self.layer3 = self.make_layer([128, 256], layers[2])
         self.layer4 = self.make_layer([256, 512], layers[3])
         self.layer5 = self.make_layer([512, 1024], layers[4])
         self.layers_out_filters = [64, 128, 256, 512, 1024]
-        
+
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -236,8 +244,8 @@ class Darknet(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
-    
-    
+
+
     def make_layer(self, planes, blocks):
         layers = []
         #  downsample
@@ -250,7 +258,7 @@ class Darknet(nn.Module):
         for i in range(0, blocks):
             layers.append(("residual_{}".format(i), BasicBlock(self.inplanes, planes)))
         return nn.Sequential(OrderedDict(layers))
-    
+
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
@@ -330,7 +338,7 @@ def th_batch_map_offsets(input, offsets, grid=None, order=1):
         grid = th_generate_grid(batch_size, input_height, input_width, offsets.data.type(), offsets.data.is_cuda)
 
     coords = offsets + grid
-    
+
     mapped_vals = th_batch_map_coordinates(input, coords)
     return mapped_vals
 
@@ -428,4 +436,3 @@ def th_repeat(a, repeats, axis=0):
 def th_flatten(a):
     """Flatten tensor"""
     return a.contiguous().view(a.nelement())
-
