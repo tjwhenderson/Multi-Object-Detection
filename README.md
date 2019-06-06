@@ -13,33 +13,31 @@ Download trained weights for the models at:
 
 Code Organization
 =================
-\begin{itemize}
-\item demo.ipynb
-  \item Runs a demo of our code and produces sample images of detected objects. 
-\item Train_Model.ipynb
-  \item Runs the training of our models on the training set (as described in Section 4).	
-\item Evaluate_Model.ipynb	
-  \item Evaluates the models by calculating the mAP on the test set.
-\item make_detections.ipynb	
-  \item Makes the detections of objects on images by predicting the bounding box and class.
-\item Confusion_Matrix.ipynb.  
-  \item Create the confusion matrix (as seen in Section 5) for the models using the test set,
+demo.ipynb
+  - Runs a demo of our code and produces sample images of detected objects. 
+Train_Model.ipynb
+  - Runs the training of our models on the training set (as described in Section 4).	
+Evaluate_Model.ipynb	
+  - Evaluates the models by calculating the mAP on the test set.
+make_detections.ipynb	
+  - Makes the detections of objects on images by predicting the bounding box and class.
+Confusion_Matrix.ipynb.  
+  - Create the confusion matrix (as seen in Section 5) for the models using the test set,
 
-\item PASCAL_Dataloader.py	
-  \item Preprocesses the PASCAL dataset images and labels and splits the dataloaders into training, validation, and test.
-\item YOLO_Loss.py                 
-  \item Loss function used in training (as described in Section 4.1.1.)
-\item yolo_model.py			
-  \item YOLO v3 base model
-\item yolo_model_dcnn.py.        
-  \item Modified YOLO v3 model to include deformable convolutions (as described in Section 3.3)
-\item bbox.py				
-  \item Function to calculate the IoU (intersection over union) for overlapping bounding boxes. 
-\item detect.py				
-  \item Plots the bounding boxes of the detected objects for the groundtruth and predicted objects.
-\item utils.py				
-  \item Utility functions to include helper functions used in the project such as NMS, etc.
-\item yolov3.cfg				
-  \item Configuration file for the YOLO v3 model
+PASCAL_Dataloader.py	
+  - Preprocesses the PASCAL dataset images and labels and splits the dataloaders into training, validation, and test.
+YOLO_Loss.py                 
+  - Loss function used in training (as described in Section 4.1.1.)
+yolo_model.py			
+  - YOLO v3 base model
+yolo_model_dcnn.py.        
+  - Modified YOLO v3 model to include deformable convolutions (as described in Section 3.3)
+bbox.py				
+  - Function to calculate the IoU (intersection over union) for overlapping bounding boxes. 
+detect.py				
+  - Plots the bounding boxes of the detected objects for the groundtruth and predicted objects.
+utils.py				
+  - Utility functions to include helper functions used in the project such as NMS, etc.
+yolov3.cfg				
+  - Configuration file for the YOLO v3 model
 
-\end{itemize}
