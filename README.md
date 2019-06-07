@@ -2,7 +2,7 @@
 
 Description
 ===========
-This is a multi-object detection project that implements YOLO v3 as well as modifies it as YOLO v3.1 to include deformable convolutional layers. The project is developed by Team "We Support the Vector Machines" and composed of members Taylor Henderson, Joni DeGuzman, Shubha Bhaskaran, and Apoorva Srivastava.
+This is a multi-object detection project that implements YOLO v3 as well as modifies it as YOLO v3.1 to include deformable convolutional layers. The project is developed by Team "We Support the Vector Machines" and composed of members Taylor Henderson, Joni DeGuzman and Shubha Bhaskaran.
 
 
 Requirements
